@@ -1,21 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { documents } from "@/data/documents";
+import { documentsApi } from "@/lib/documents";
 import { DocumentTable } from "@/components/documents/DocumentTable";
 import { Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
-import { DocumentStatus } from "@/types";
+import { DocumentStatus, Document } from "@/types";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function AdvisorDocuments() {
-  const advisorDocs = documents.filter((d) => d.advisorId === "user-1");
+  const { user } = useAuth();
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | "ALL">("ALL");
 
-  const filteredDocs = advisorDocs.filter((doc) => {
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        setIsLoading(true);
+        const response = await documentsApi.getAll({ advisorId: user?.id });
+        setDocuments(response.documents);
+      } catch (err) {
+        setError("Failed to load documents");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user?.id) {
+      fetchDocuments();
+    }
+  }, [user?.id]);
+
+  const filteredDocs = documents.filter((doc) => {
     const matchesSearch = doc.name.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || doc.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -32,10 +55,20 @@ export default function AdvisorDocuments() {
   return (
     <DashboardLayout
       role="ADVISOR"
-      userName="Alex Johnson"
+      userName={user?.name || "Advisor"}
       title="Documents"
       subtitle="Manage your compliance documents"
     >
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+        </div>
+      ) : (
       <div className="space-y-6">
         {/* Search and Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
@@ -73,6 +106,7 @@ export default function AdvisorDocuments() {
         {/* Documents Table */}
         <DocumentTable documents={filteredDocs} role="ADVISOR" />
       </div>
+      )}
     </DashboardLayout>
   );
 }

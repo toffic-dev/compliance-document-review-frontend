@@ -1,11 +1,36 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { documents } from "@/data/documents";
+import { documentsApi } from "@/lib/documents";
 import { DocumentTable } from "@/components/documents/DocumentTable";
 import { FileText, Clock, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Document } from "@/types";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function OfficerDashboard() {
+  const { user } = useAuth();
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        setIsLoading(true);
+        const response = await documentsApi.getAll();
+        setDocuments(response.documents);
+      } catch (err) {
+        setError("Failed to load documents");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDocuments();
+  }, []);
+
   const stats = {
     total: documents.length,
     pending: documents.filter((d) => d.status === "PENDING_REVIEW").length,
@@ -18,13 +43,33 @@ export default function OfficerDashboard() {
     .filter((d) => d.status === "PENDING_REVIEW")
     .slice(0, 5);
 
+  if (isLoading) {
+    return (
+      <DashboardLayout
+        role="OFFICER"
+        userName={user?.name || "Officer"}
+        title="Compliance Review"
+        subtitle="Review and process submitted documents"
+      >
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout
       role="OFFICER"
-      userName="Dr. Emily Roberts"
+      userName={user?.name || "Officer"}
       title="Compliance Review"
       subtitle="Review and process submitted documents"
     >
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
       <div className="space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

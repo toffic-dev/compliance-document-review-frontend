@@ -1,29 +1,69 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { documents } from "@/data/documents";
+import { documentsApi } from "@/lib/documents";
 import { FileText, Clock, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { DocumentTable } from "@/components/documents/DocumentTable";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { Document } from "@/types";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function AdvisorDashboard() {
-  const advisorDocs = documents.filter((d) => d.advisorId === "user-1");
+  const { user } = useAuth();
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        setIsLoading(true);
+        const response = await documentsApi.getAll({ advisorId: user?.id });
+        setDocuments(response.documents);
+      } catch (err) {
+        setError("Failed to load documents");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user?.id) {
+      fetchDocuments();
+    }
+  }, [user?.id]);
 
   const stats = {
-    total: advisorDocs.length,
-    pending: advisorDocs.filter((d) => d.status === "PENDING_REVIEW").length,
-    approved: advisorDocs.filter((d) => d.status === "APPROVED").length,
-    needsRevision: advisorDocs.filter((d) => d.status === "NEEDS_REVISION").length,
-    rejected: advisorDocs.filter((d) => d.status === "REJECTED").length,
+    total: documents.length,
+    pending: documents.filter((d) => d.status === "PENDING_REVIEW").length,
+    approved: documents.filter((d) => d.status === "APPROVED").length,
+    needsRevision: documents.filter((d) => d.status === "NEEDS_REVISION").length,
+    rejected: documents.filter((d) => d.status === "REJECTED").length,
   };
 
-  const recentDocs = advisorDocs.slice(0, 5);
+  const recentDocs = documents.slice(0, 5);
+
+  if (isLoading) {
+    return (
+      <DashboardLayout
+        role="ADVISOR"
+        userName={user?.name || "Advisor"}
+        title="Dashboard"
+        subtitle="Track your compliance submissions and review status"
+      >
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
       role="ADVISOR"
-      userName="Alex Johnson"
+      userName={user?.name || "Advisor"}
       title="Dashboard"
       subtitle="Track your compliance submissions and review status"
     >
@@ -31,12 +71,18 @@ export default function AdvisorDashboard() {
         {/* Welcome */}
         <div>
           <h2 className="text-lg font-semibold text-slate-900">
-            Good morning, Alex
+            Good morning, {user?.name?.split(" ")[0] || "Advisor"}
           </h2>
           <p className="text-sm text-slate-500 mt-1">
             Track your compliance submissions and review status.
           </p>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

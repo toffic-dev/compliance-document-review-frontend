@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { documents } from "@/data/documents";
+import { documentsApi, reviewsApi } from "@/lib/documents";
 import { StatusBadge } from "@/components/documents/StatusBadge";
 import { DocumentViewer } from "@/components/review/DocumentViewer";
 import { AIAnalysisPanel } from "@/components/ai/AIAnalysisPanel";
@@ -12,16 +12,40 @@ import { ToastContainer } from "@/components/ui/Toast";
 import { FileText, ArrowLeft, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/types";
+import { Document, Toast } from "@/types";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function OfficerReview() {
+  const { user } = useAuth();
   const params = useParams();
   const router = useRouter();
   const docId = params.id as string;
-  const doc = documents.find((d) => d.id === docId);
+  const [document, setDocument] = useState<Document | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [currentStatus, setCurrentStatus] = useState(doc?.status || "PENDING_REVIEW");
+  const [currentStatus, setCurrentStatus] = useState<Document["status"]>("PENDING_REVIEW");
   const [aiError, setAiError] = useState(false);
+
+  useEffect(() => {
+    const fetchDocument = async () => {
+      try {
+        setIsLoading(true);
+        const doc = await documentsApi.getById(docId);
+        setDocument(doc);
+        setCurrentStatus(doc.status);
+      } catch (err) {
+        setError("Failed to load document");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (docId) {
+      fetchDocument();
+    }
+  }, [docId]);
 
   const addToast = (message: string, type: "success" | "error" | "info") => {
     const id = Math.random().toString(36).slice(2);
@@ -32,28 +56,76 @@ export default function OfficerReview() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const handleApprove = () => {
-    setCurrentStatus("APPROVED");
-    addToast("Document approved", "success");
+  const handleApprove = async (comment: string) => {
+    if (!document || !user) return;
+    try {
+      await reviewsApi.submit({
+        documentId: document.id,
+        decision: "APPROVE",
+        comment,
+        officerId: user.id,
+      });
+      setCurrentStatus("APPROVED");
+      addToast("Document approved", "success");
+    } catch (err) {
+      addToast("Failed to submit decision", "error");
+      console.error(err);
+    }
   };
 
-  const handleReject = () => {
-    setCurrentStatus("REJECTED");
-    addToast("Document rejected", "success");
+  const handleReject = async (comment: string) => {
+    if (!document || !user) return;
+    try {
+      await reviewsApi.submit({
+        documentId: document.id,
+        decision: "REJECT",
+        comment,
+        officerId: user.id,
+      });
+      setCurrentStatus("REJECTED");
+      addToast("Document rejected", "success");
+    } catch (err) {
+      addToast("Failed to submit decision", "error");
+      console.error(err);
+    }
   };
 
-  const handleRequestRevision = () => {
-    setCurrentStatus("NEEDS_REVISION");
-    addToast("Revision requested", "success");
+  const handleRequestRevision = async (comment: string) => {
+    if (!document || !user) return;
+    try {
+      await reviewsApi.submit({
+        documentId: document.id,
+        decision: "REQUEST_REVISION",
+        comment,
+        officerId: user.id,
+      });
+      setCurrentStatus("NEEDS_REVISION");
+      addToast("Revision requested", "success");
+    } catch (err) {
+      addToast("Failed to submit decision", "error");
+      console.error(err);
+    }
   };
 
-  if (!doc) {
+  if (isLoading) {
     return (
-      <DashboardLayout role="OFFICER" userName="Dr. Emily Roberts" title="Document Not Found">
+      <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Loading...">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !document) {
+    return (
+      <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Document Not Found">
         <div className="text-center py-12">
           <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-slate-900 mb-2">Document not found</h2>
-          <p className="text-sm text-slate-500 mb-4">The document you&apos;re looking for doesn&apos;t exist.</p>
+          <p className="text-sm text-slate-500 mb-4">
+            {error || "The document you're looking for doesn't exist."}
+          </p>
           <Link href="/officer/submissions">
             <Button variant="outline">Back to Submissions</Button>
           </Link>
@@ -63,7 +135,7 @@ export default function OfficerReview() {
   }
 
   return (
-    <DashboardLayout role="OFFICER" userName="Dr. Emily Roberts" title="Review Document" subtitle={doc.name}>
+    <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Review Document" subtitle={document.name}>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="space-y-6">
         <Link href="/officer/submissions" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
@@ -75,9 +147,9 @@ export default function OfficerReview() {
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">{doc.name}</h2>
+              <h2 className="text-lg font-semibold text-slate-900">{document.name}</h2>
               <p className="text-sm text-slate-500 mt-1">
-                Submitted by {doc.advisorName} • Version {doc.version}
+                Submitted by {document.advisorName} • Version {document.version}
               </p>
             </div>
             <StatusBadge status={currentStatus} />
@@ -88,13 +160,13 @@ export default function OfficerReview() {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Document Viewer */}
           <div>
-            <DocumentViewer documentName={doc.name} />
+            <DocumentViewer documentName={document.name} />
           </div>
 
           {/* AI Analysis */}
           <div>
             <AIAnalysisPanel
-              analysis={doc.aiAnalysis}
+              analysis={document.aiAnalysis}
               isError={aiError}
               onRetry={() => setAiError(false)}
             />

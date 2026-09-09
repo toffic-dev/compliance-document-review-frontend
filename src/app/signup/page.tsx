@@ -6,23 +6,38 @@ import { useRouter } from "next/navigation";
 import { Shield, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { signup } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"ADVISOR" | "OFFICER">("ADVISOR");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
       setIsLoading(false);
+      return;
+    }
+
+    try {
+      await signup(name, email, password, role);
       router.push(role === "ADVISOR" ? "/advisor" : "/officer");
-    }, 500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create account");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -47,6 +62,11 @@ export default function SignupPage() {
 
           {/* Form */}
           <div className="bg-white rounded-xl border border-slate-200 p-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
                 id="name"
