@@ -7,7 +7,7 @@ interface LoginRequest {
 }
 
 interface SignupRequest {
-  name: string;
+  full_name: string;
   email: string;
   password: string;
   role: 'ADVISOR' | 'OFFICER';
