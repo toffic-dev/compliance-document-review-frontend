@@ -15,7 +15,7 @@ export default function UploadDocument() {
       subtitle="Submit a new compliance document for review"
     >
       <div className="max-w-2xl">
-        <FileUploader />
+        <FileUploader advisorId={user?.id} />
       </div>
     </DashboardLayout>
   );

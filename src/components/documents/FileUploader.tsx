@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { documentsApi } from "@/lib/documents";
 
 interface FileUploaderProps {
-  onUpload?: (file: File) => void;
+  advisorId?: string;
 }
 
 type UploadState = "idle" | "selected" | "uploading" | "success" | "error";
 
-export function FileUploader({ onUpload }: FileUploaderProps) {
+export function FileUploader({ advisorId }: FileUploaderProps) {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<UploadState>("idle");
   const [progress, setProgress] = useState(0);
@@ -75,21 +78,30 @@ export function FileUploader({ onUpload }: FileUploaderProps) {
     if (selectedFile) handleFile(selectedFile);
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!file) return;
     setState("uploading");
     setProgress(0);
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setState("success");
-          onUpload?.(file);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    try {
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      await documentsApi.upload(file, advisorId || "");
+
+      clearInterval(interval);
+      setProgress(100);
+      setState("success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload document");
+      setState("error");
+    }
   };
 
   const handleRemove = () => {
@@ -119,9 +131,14 @@ export function FileUploader({ onUpload }: FileUploaderProps) {
         <p className="text-sm text-slate-600 font-medium">
           Status: Pending Review
         </p>
-        <Button variant="outline" className="mt-6" onClick={handleRemove}>
-          Upload Another Document
-        </Button>
+        <div className="flex gap-3 justify-center mt-6">
+          <Button variant="outline" onClick={handleRemove}>
+            Upload Another Document
+          </Button>
+          <Button onClick={() => router.push("/advisor/documents")}>
+            View Documents
+          </Button>
+        </div>
       </div>
     );
   }
