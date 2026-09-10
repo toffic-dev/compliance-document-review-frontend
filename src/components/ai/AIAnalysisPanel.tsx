@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AIAnalysis } from "@/types";
-import { AlertTriangle, RefreshCw, Info } from "lucide-react";
+import { AlertTriangle, RefreshCw, Info, Sparkles } from "lucide-react";
 import { ComplianceFlag } from "./ComplianceFlag";
 import { Button } from "@/components/ui/Button";
 
@@ -11,6 +11,9 @@ interface AIAnalysisPanelProps {
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
+  documentId?: string;
+  onAnalyze?: () => Promise<void>;
+  isAnalyzing?: boolean;
 }
 
 export function AIAnalysisPanel({
@@ -18,6 +21,8 @@ export function AIAnalysisPanel({
   isLoading = false,
   isError = false,
   onRetry,
+  onAnalyze,
+  isAnalyzing = false,
 }: AIAnalysisPanelProps) {
   const [selectedFlagId, setSelectedFlagId] = useState<string | null>(null);
 
@@ -46,14 +51,29 @@ export function AIAnalysisPanel({
             AI analysis unavailable
           </h3>
           <p className="text-sm text-slate-500 mb-4">
-            The document can still be reviewed manually.
+            {isError
+              ? "Failed to load analysis. You can try again or run a new analysis."
+              : "No analysis available. Run AI analysis to check for compliance issues."}
           </p>
-          {onRetry && (
-            <Button variant="outline" size="sm" onClick={onRetry}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          )}
+          <div className="flex items-center justify-center gap-3">
+            {onAnalyze && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={onAnalyze}
+                isLoading={isAnalyzing}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Run Analysis
+              </Button>
+            )}
+            {onRetry && (
+              <Button variant="outline" size="sm" onClick={onRetry}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -63,7 +83,21 @@ export function AIAnalysisPanel({
     <div className="space-y-6">
       {/* Summary */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h3 className="text-sm font-semibold text-slate-900 mb-3">Summary</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-slate-900">Summary</h3>
+          {onAnalyze && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onAnalyze}
+              isLoading={isAnalyzing}
+              disabled={isAnalyzing}
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${isAnalyzing ? 'animate-spin' : ''}`} />
+              Re-analyze
+            </Button>
+          )}
+        </div>
         <p className="text-sm text-slate-600 leading-relaxed">
           {analysis.summary}
         </p>

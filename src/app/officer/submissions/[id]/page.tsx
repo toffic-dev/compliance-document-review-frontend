@@ -12,7 +12,7 @@ import { ToastContainer } from "@/components/ui/Toast";
 import { FileText, ArrowLeft, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { Document, Toast } from "@/types";
+import { Document, Toast, AIAnalysis } from "@/types";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function OfficerReview() {
@@ -21,11 +21,13 @@ export default function OfficerReview() {
   const router = useRouter();
   const docId = params.id as string;
   const [document, setDocument] = useState<Document | null>(null);
+  const [analysis, setAnalysis] = useState<AIAnalysis | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [currentStatus, setCurrentStatus] = useState<Document["status"]>("PENDING_REVIEW");
-  const [aiError, setAiError] = useState(false);
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -34,6 +36,7 @@ export default function OfficerReview() {
         const doc = await documentsApi.getById(docId);
         setDocument(doc);
         setCurrentStatus(doc.status);
+        setAnalysis(doc.aiAnalysis);
       } catch (err) {
         setError("Failed to load document");
         console.error(err);
@@ -46,6 +49,49 @@ export default function OfficerReview() {
       fetchDocument();
     }
   }, [docId]);
+
+  const fetchAnalysis = async () => {
+    if (!document) return;
+    try {
+      setIsAnalysisLoading(true);
+      setAiError(false);
+      const result = await documentsApi.getAnalysis(document.id);
+      setAnalysis(result);
+      addToast("Analysis loaded successfully", "success");
+    } catch (err) {
+      setAiError(true);
+      addToast("Failed to load analysis", "error");
+      console.error(err);
+    } finally {
+      setIsAnalysisLoading(false);
+    }
+  };
+
+  const triggerAnalysis = async () => {
+    if (!document) return;
+    try {
+      setIsAnalysisLoading(true);
+      setAiError(false);
+      addToast("Running AI analysis...", "info");
+      const result = await documentsApi.triggerAnalysis(document.id);
+      setAnalysis(result);
+      addToast("Analysis complete", "success");
+    } catch (err) {
+      setAiError(true);
+      addToast("Failed to run analysis", "error");
+      console.error(err);
+    } finally {
+      setIsAnalysisLoading(false);
+    }
+  };
+
+  const handleAnalysisRetry = () => {
+    if (analysis) {
+      triggerAnalysis();
+    } else {
+      fetchAnalysis();
+    }
+  };
 
   const addToast = (message: string, type: "success" | "error" | "info") => {
     const id = Math.random().toString(36).slice(2);
@@ -166,9 +212,12 @@ export default function OfficerReview() {
           {/* AI Analysis */}
           <div>
             <AIAnalysisPanel
-              analysis={document.aiAnalysis}
+              analysis={analysis}
+              isLoading={isAnalysisLoading}
               isError={aiError}
-              onRetry={() => setAiError(false)}
+              onRetry={handleAnalysisRetry}
+              onAnalyze={analysis ? triggerAnalysis : fetchAnalysis}
+              isAnalyzing={isAnalysisLoading}
             />
           </div>
         </div>
