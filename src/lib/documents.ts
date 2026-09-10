@@ -18,32 +18,32 @@ interface DocumentFilters {
 
 export const documentsApi = {
   getAll: async (filters?: DocumentFilters): Promise<DocumentsResponse> => {
-    return api.get<DocumentsResponse>('/api/documents', filters as Record<string, string>);
+    return api.get<DocumentsResponse>('/documents', filters as Record<string, string>);
   },
 
   getById: async (id: string): Promise<Document> => {
-    return api.get<Document>(`/api/documents/${id}`);
+    return api.get<Document>(`/documents/${id}`);
   },
 
   upload: async (file: File, advisorId: string): Promise<Document> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('advisorId', advisorId);
-    return api.upload<Document>('/api/documents', formData);
+    return api.upload<Document>('/documents', formData);
   },
 
   getAnalysis: async (id: string): Promise<AIAnalysis> => {
-    return api.get<AIAnalysis>(`/api/documents/${id}/analysis`);
+    return api.get<AIAnalysis>(`/documents/${id}/analysis`);
   },
 
   triggerAnalysis: async (id: string): Promise<AIAnalysis> => {
-    return api.post<AIAnalysis>(`/api/documents/${id}/analyze`);
+    return api.post<AIAnalysis>(`/documents/${id}/analyze`);
   },
 
   download: async (id: string): Promise<Blob> => {
     const token = localStorage.getItem('token');
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/documents/${id}/download`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/documents/${id}/download`,
       {
         headers: {
           Authorization: token ? `Bearer ${token}` : '',
@@ -59,10 +59,10 @@ export const documentsApi = {
 
 export const reviewsApi = {
   submit: async (data: Omit<ReviewDecision, 'timestamp'>): Promise<{ success: boolean; document: Document }> => {
-    return api.post('/api/reviews', data);
+    return api.post('/reviews', data);
   },
 
   getHistory: async (documentId: string): Promise<ReviewDecision[]> => {
-    return api.get<ReviewDecision[]>(`/api/reviews/${documentId}`);
+    return api.get<ReviewDecision[]>(`/reviews/${documentId}`);
   },
 };

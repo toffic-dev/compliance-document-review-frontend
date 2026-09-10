@@ -20,7 +20,7 @@ interface AuthResponse {
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/api/auth/login', data);
+    const response = await api.post<AuthResponse>('/auth/login', data);
     if (response.token) {
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
@@ -29,7 +29,7 @@ export const authApi = {
   },
 
   signup: async (data: SignupRequest): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/api/auth/signup', data);
+    const response = await api.post<AuthResponse>('/auth/signup', data);
     if (response.token) {
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
