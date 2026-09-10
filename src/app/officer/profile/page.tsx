@@ -5,12 +5,15 @@ import { getInitials } from "@/lib/utils";
 import { User, Mail, Shield } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function OfficerProfile() {
+  const { user } = useAuth();
+
   return (
     <DashboardLayout
       role="OFFICER"
-      userName="Dr. Emily Roberts"
+      userName={user?.name || "Officer"}
       title="Profile"
       subtitle="Manage your account settings"
     >
@@ -20,12 +23,12 @@ export default function OfficerProfile() {
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 rounded-full bg-slate-200 flex items-center justify-center">
               <span className="text-xl font-semibold text-slate-600">
-                {getInitials("Dr. Emily Roberts")}
+                {getInitials(user?.name || "Officer")}
               </span>
             </div>
             <div>
               <h3 className="text-lg font-semibold text-slate-900">
-                Dr. Emily Roberts
+                {user?.name || "Officer"}
               </h3>
               <p className="text-sm text-slate-500">Compliance Officer</p>
             </div>
@@ -41,14 +44,14 @@ export default function OfficerProfile() {
             <Input
               id="name"
               label="Full Name"
-              defaultValue="Dr. Emily Roberts"
+              defaultValue={user?.name || ""}
               icon={<User className="h-4 w-4" />}
             />
             <Input
               id="email"
               label="Email"
               type="email"
-              defaultValue="emily.roberts@compliance.com"
+              defaultValue={user?.email || ""}
               icon={<Mail className="h-4 w-4" />}
             />
             <Input
