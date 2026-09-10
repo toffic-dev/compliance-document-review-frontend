@@ -154,7 +154,7 @@ export function FileUploader({ onUpload }: FileUploaderProps) {
         <p className="text-sm text-slate-500 mb-4">
           Drag and drop your file here
         </p>
-        <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}>
           Browse Files
         </Button>
         <p className="text-xs text-slate-400 mt-4">

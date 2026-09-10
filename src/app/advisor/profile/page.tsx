@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { getInitials } from "@/lib/utils";
 import { User, Mail, Shield } from "lucide-react";
@@ -9,6 +10,27 @@ import { useAuth } from "@/lib/AuthContext";
 
 export default function AdvisorProfile() {
   const { user } = useAuth();
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      // Simulate API call for updating profile
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setSuccess("Profile updated successfully");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update profile");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <DashboardLayout
@@ -40,18 +62,30 @@ export default function AdvisorProfile() {
           <h3 className="text-sm font-semibold text-slate-900 mb-4">
             Personal Information
           </h3>
-          <div className="space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+              {success}
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               id="name"
               label="Full Name"
-              defaultValue={user?.name || ""}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               icon={<User className="h-4 w-4" />}
             />
             <Input
               id="email"
               label="Email"
               type="email"
-              defaultValue={user?.email || ""}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               icon={<Mail className="h-4 w-4" />}
             />
             <Input
@@ -61,10 +95,12 @@ export default function AdvisorProfile() {
               icon={<Shield className="h-4 w-4" />}
               disabled
             />
-          </div>
-          <div className="mt-6 flex justify-end">
-            <Button>Save Changes</Button>
-          </div>
+            <div className="mt-6 flex justify-end">
+              <Button type="submit" isLoading={isLoading}>
+                Save Changes
+              </Button>
+            </div>
+          </form>
         </div>
       </div>
     </DashboardLayout>
