@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
@@ -21,6 +21,17 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
+
+  // Track mount state to avoid state updates on unmounted component
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const acceptedTypes = [
     "application/pdf",
@@ -29,6 +40,19 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
   ];
   const acceptedExtensions = [".pdf", ".docx", ".xlsx"];
   const maxSize = 10 * 1024 * 1024;
+
+  // Cleanup interval and abort any in-flight upload on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const validateFile = (file: File): string | null => {
     if (
@@ -56,22 +80,22 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
     setError(null);
   };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile) handleFile(droppedFile);
-  }, []);
+  };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
-  }, []);
+  };
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-  }, []);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -80,31 +104,81 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
 
   const handleUpload = async () => {
     if (!file) return;
+
+    // Validate advisorId is present
+    if (!advisorId) {
+      setError("User session not found. Please log in again.");
+      setState("error");
+      return;
+    }
+
     setState("uploading");
     setProgress(0);
+
+    // Create abort controller for this upload
+    abortControllerRef.current = new AbortController();
+
     try {
-      const interval = setInterval(() => {
+      intervalRef.current = setInterval(() => {
+        // Guard: don't update state if component has unmounted
+        if (!mountedRef.current) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          return;
+        }
         setProgress((prev) => {
           if (prev >= 90) {
-            clearInterval(interval);
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
             return 90;
           }
           return prev + 10;
         });
       }, 200);
 
-      await documentsApi.upload(file, advisorId || "");
+      await documentsApi.upload(file, advisorId || "", abortControllerRef.current.signal);
 
-      clearInterval(interval);
+      // Guard: don't update state if component has unmounted
+      if (!mountedRef.current) return;
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       setProgress(100);
       setState("success");
     } catch (err) {
+      // Don't update state if the upload was intentionally aborted
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
+
+      // Guard: don't update state if component has unmounted
+      if (!mountedRef.current) return;
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       setError(err instanceof Error ? err.message : "Failed to upload document");
       setState("error");
     }
   };
 
   const handleRemove = () => {
+    // Cancel any in-progress upload
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setFile(null);
     setState("idle");
     setProgress(0);
@@ -184,7 +258,11 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
             <div>
               <p className="text-sm font-medium text-red-800">{error}</p>
               <p className="text-xs text-red-600 mt-1">
-                Please select a valid file and try again.
+                {error.includes("Invalid file type") || error.includes("File size exceeds")
+                  ? "Please select a valid PDF, DOCX, or XLSX file under 10 MB."
+                  : error.includes("User session")
+                    ? "Please refresh the page and log in again."
+                    : "Please try again. If the problem persists, contact support."}
               </p>
             </div>
           </div>

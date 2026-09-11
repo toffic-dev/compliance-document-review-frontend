@@ -8,12 +8,13 @@ export class ApiError extends Error {
   }
 }
 
-interface RequestConfig extends RequestInit {
+interface RequestConfig extends Omit<RequestInit, 'signal'> {
   params?: Record<string, string>;
+  signal?: AbortSignal;
 }
 
 async function apiFetch<T>(endpoint: string, config: RequestConfig = {}): Promise<T> {
-  const { params, ...requestConfig } = config;
+  const { params, signal, ...requestConfig } = config;
   
   let url = `${API_URL}${API_VERSION}${endpoint}`;
   if (params) {
@@ -33,11 +34,13 @@ async function apiFetch<T>(endpoint: string, config: RequestConfig = {}): Promis
     const response = await fetch(url, {
       ...requestConfig,
       headers,
+      signal,
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-      throw new ApiError(response.status, error.message || 'Request failed');
+      const errorData = await response.json().catch(() => null);
+      const errorMessage = errorData?.message || errorData?.error || errorData?.detail || `Request failed with status ${response.status}`;
+      throw new ApiError(response.status, errorMessage);
     }
 
     return response.json();
@@ -69,11 +72,12 @@ export const api = {
   delete: <T>(endpoint: string) =>
     apiFetch<T>(endpoint, { method: 'DELETE' }),
   
-  upload: <T>(endpoint: string, formData: FormData) =>
+  upload: <T>(endpoint: string, formData: FormData, signal?: AbortSignal) =>
     apiFetch<T>(endpoint, { 
       method: 'POST', 
       body: formData,
       headers: {}, // Let browser set Content-Type for multipart
+      signal,
     }),
 
   // Health check to verify backend is reachable

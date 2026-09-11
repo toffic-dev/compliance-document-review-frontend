@@ -25,11 +25,11 @@ export const documentsApi = {
     return api.get<Document>(`/documents/${id}`);
   },
 
-  upload: async (file: File, advisorId: string): Promise<Document> => {
+  upload: async (file: File, advisorId: string, signal?: AbortSignal): Promise<Document> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('advisorId', advisorId);
-    return api.upload<Document>('/documents', formData);
+    return api.upload<Document>('/documents', formData, signal);
   },
 
   getAnalysis: async (id: string): Promise<AIAnalysis> => {
