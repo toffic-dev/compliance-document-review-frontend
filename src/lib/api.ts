@@ -2,7 +2,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://compliance-document-
 const API_VERSION = '/api/v1';
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public rawResponse?: string) {
     super(message);
     this.name = 'ApiError';
   }
@@ -38,9 +38,15 @@ async function apiFetch<T>(endpoint: string, config: RequestConfig = {}): Promis
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      const errorMessage = errorData?.message || errorData?.error || errorData?.detail || `Request failed with status ${response.status}`;
-      throw new ApiError(response.status, errorMessage);
+      const rawText = await response.text().catch(() => '');
+      let errorData = null;
+      try {
+        errorData = JSON.parse(rawText);
+      } catch {
+        // Response was not JSON
+      }
+      const errorMessage = errorData?.message || errorData?.error || errorData?.detail || rawText || `Request failed with status ${response.status}`;
+      throw new ApiError(response.status, errorMessage, rawText);
     }
 
     return response.json();

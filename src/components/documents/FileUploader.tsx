@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { documentsApi } from "@/lib/documents";
+import { ApiError } from "@/lib/api";
 
 interface FileUploaderProps {
   advisorId?: string;
@@ -164,7 +165,16 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      setError(err instanceof Error ? err.message : "Failed to upload document");
+
+      // Build detailed error message for debugging
+      if (err instanceof ApiError) {
+        const detail = err.rawResponse ? ` (${err.rawResponse.substring(0, 100)})` : "";
+        setError(`Upload failed [${err.status}]: ${err.message}${detail}`);
+      } else if (err instanceof Error) {
+        setError(`Upload failed: ${err.message}`);
+      } else {
+        setError("Failed to upload document");
+      }
       setState("error");
     }
   };
