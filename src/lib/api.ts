@@ -38,6 +38,7 @@ async function apiFetch<T>(endpoint: string, config: RequestConfig = {}): Promis
   try {
     const response = await fetch(url, {
       ...requestConfig,
+      body,
       headers,
       signal,
     });
