@@ -14,7 +14,7 @@ interface RequestConfig extends Omit<RequestInit, 'signal'> {
 }
 
 async function apiFetch<T>(endpoint: string, config: RequestConfig = {}): Promise<T> {
-  const { params, signal, ...requestConfig } = config;
+  const { params, signal, body, ...requestConfig } = config;
   
   let url = `${API_URL}${API_VERSION}${endpoint}`;
   if (params) {
@@ -25,10 +25,15 @@ async function apiFetch<T>(endpoint: string, config: RequestConfig = {}): Promis
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
     ...config.headers,
   };
+
+  // Only set Content-Type for non-FormData bodies.
+  // When sending FormData, the browser must set Content-Type with the multipart boundary.
+  if (!(body instanceof FormData)) {
+    (headers as Record<string, string>)['Content-Type'] = 'application/json';
+  }
 
   try {
     const response = await fetch(url, {
