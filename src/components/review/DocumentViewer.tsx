@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   ChevronLeft,
@@ -28,6 +28,8 @@ export function DocumentViewer({
 }: DocumentViewerProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
@@ -61,6 +63,31 @@ export function DocumentViewer({
     }
   };
 
+  const handleSearch = () => {
+    // Open browser's find-in-page dialog
+    window.getSelection()?.removeAllRanges();
+    const event = new KeyboardEvent("keydown", { key: "f", ctrlKey: true, metaKey: true });
+    window.dispatchEvent(event);
+  };
+
+  const handleFullscreen = async () => {
+    if (!containerRef.current) return;
+    try {
+      if (!document.fullscreenElement) {
+        await containerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.error("Fullscreen failed:", err);
+    }
+  };
+
+  // Build iframe URL with page fragment for PDF navigation
+  const iframeSrc = fileUrl ? `${fileUrl}#page=${currentPage}&zoom=${zoom}` : undefined;
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       {/* Toolbar */}
@@ -72,23 +99,23 @@ export function DocumentViewer({
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" title="Search">
+          <Button variant="ghost" size="sm" title="Search" onClick={handleSearch}>
             <Search className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="sm" title="Download" onClick={handleDownload}>
             <Download className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" title="Fullscreen">
+          <Button variant="ghost" size="sm" title="Fullscreen" onClick={handleFullscreen}>
             <Maximize className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* Document Preview */}
-      <div className="relative bg-slate-100 min-h-[500px] flex items-center justify-center p-4">
-        {fileUrl ? (
+      <div ref={containerRef} className="relative bg-slate-100 min-h-[500px] flex items-center justify-center p-4">
+        {iframeSrc ? (
           <iframe
-            src={fileUrl}
+            src={iframeSrc}
             className="w-full h-[600px] border-0"
             style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
             title={documentName}
@@ -135,13 +162,12 @@ export function DocumentViewer({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm text-slate-600">
-            Page {currentPage} of {totalPages}
+            Page {currentPage}
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleNextPage}
-            disabled={currentPage >= totalPages}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
