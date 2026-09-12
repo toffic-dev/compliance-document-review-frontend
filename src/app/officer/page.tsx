@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { documentsApi } from "@/lib/documents";
 import { DocumentTable } from "@/components/documents/DocumentTable";
@@ -10,9 +11,25 @@ import { useAuth } from "@/lib/AuthContext";
 
 export default function OfficerDashboard() {
   const { user } = useAuth();
+  const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
+
+  // Role check: show message then redirect if user is not an officer
+  useEffect(() => {
+    if (user && user.role !== "OFFICER") {
+      const targetDashboard = user.role === "ADVISOR" ? "advisor" : "login";
+      setRoleMismatchMessage(
+        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+      );
+      const timer = setTimeout(() => {
+        router.push(user.role === "ADVISOR" ? "/advisor" : "/login");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, router]);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -42,6 +59,20 @@ export default function OfficerDashboard() {
   const pendingDocs = documents
     .filter((d) => d.status === "PENDING_REVIEW")
     .slice(0, 5);
+
+  if (roleMismatchMessage) {
+    return (
+      <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Redirecting...">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-6 py-4 rounded-lg inline-block">
+              {roleMismatchMessage}
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (isLoading) {
     return (

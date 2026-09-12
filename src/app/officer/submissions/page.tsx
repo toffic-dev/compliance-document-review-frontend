@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { documentsApi } from "@/lib/documents";
 import { DocumentTable } from "@/components/documents/DocumentTable";
@@ -11,6 +12,7 @@ import { useAuth } from "@/lib/AuthContext";
 
 export default function OfficerSubmissions() {
   const { user } = useAuth();
+  const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +20,21 @@ export default function OfficerSubmissions() {
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | "ALL">("ALL");
   const [severityFilter, setSeverityFilter] = useState<Severity | "ALL">("ALL");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "severity">("newest");
+  const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
+
+  // Role check: show message then redirect if user is not an officer
+  useEffect(() => {
+    if (user && user.role !== "OFFICER") {
+      const targetDashboard = user.role === "ADVISOR" ? "advisor" : "login";
+      setRoleMismatchMessage(
+        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+      );
+      const timer = setTimeout(() => {
+        router.push(user.role === "ADVISOR" ? "/advisor" : "/login");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, router]);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -92,6 +109,11 @@ export default function OfficerSubmissions() {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
           {error}
+        </div>
+      )}
+      {roleMismatchMessage && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-center mb-6">
+          {roleMismatchMessage}
         </div>
       )}
       {isLoading ? (

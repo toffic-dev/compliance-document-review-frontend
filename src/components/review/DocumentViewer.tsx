@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   ChevronLeft,
@@ -11,6 +11,8 @@ import {
   Download,
   Search,
   FileText,
+  LayoutGrid,
+  File,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { documentsApi } from "@/lib/documents";
@@ -19,24 +21,41 @@ interface DocumentViewerProps {
   documentId: string;
   documentName: string;
   fileUrl?: string;
+  totalPages?: number;
 }
+
+type ViewMode = "single" | "all";
+
+const PAGE_BATCH_SIZE = 15;
 
 export function DocumentViewer({
   documentId,
   documentName,
   fileUrl,
+  totalPages = 1,
 }: DocumentViewerProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [visiblePageCount, setVisiblePageCount] = useState(PAGE_BATCH_SIZE);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible pages when document changes
+  useEffect(() => {
+    setVisiblePageCount(PAGE_BATCH_SIZE);
+  }, [fileUrl]);
+
+  const handleLoadMore = () => {
+    setVisiblePageCount((prev) => Math.min(prev + PAGE_BATCH_SIZE, totalPages));
+  };
 
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
   const handleNextPage = () => {
-    setCurrentPage(currentPage + 1);
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
   const handleZoomIn = () => {
@@ -64,7 +83,6 @@ export function DocumentViewer({
   };
 
   const handleSearch = () => {
-    // Open browser's find-in-page dialog
     window.getSelection()?.removeAllRanges();
     const event = new KeyboardEvent("keydown", { key: "f", ctrlKey: true, metaKey: true });
     window.dispatchEvent(event);
@@ -86,7 +104,16 @@ export function DocumentViewer({
   };
 
   // Build iframe URL with page fragment for PDF navigation
-  const iframeSrc = fileUrl ? `${fileUrl}#page=${currentPage}&zoom=${zoom}` : undefined;
+  const buildIframeSrc = (pageNum: number) => {
+    return fileUrl ? `${fileUrl}#page=${pageNum}` : undefined;
+  };
+
+  // Generate array of page numbers for all-pages view
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  // Pages to render based on current batch
+  const visiblePages = pages.slice(0, visiblePageCount);
+  const hasMorePages = visiblePageCount < totalPages;
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -99,6 +126,18 @@ export function DocumentViewer({
           </span>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            title={viewMode === "single" ? "Show all pages" : "Show single page"}
+            onClick={() => setViewMode(viewMode === "single" ? "all" : "single")}
+          >
+            {viewMode === "single" ? (
+              <LayoutGrid className="h-4 w-4" />
+            ) : (
+              <File className="h-4 w-4" />
+            )}
+          </Button>
           <Button variant="ghost" size="sm" title="Search" onClick={handleSearch}>
             <Search className="h-4 w-4" />
           </Button>
@@ -113,13 +152,36 @@ export function DocumentViewer({
 
       {/* Document Preview */}
       <div ref={containerRef} className="relative bg-slate-100 min-h-[500px] flex items-center justify-center p-4">
-        {iframeSrc ? (
-          <iframe
-            src={iframeSrc}
-            className="w-full h-[600px] border-0"
-            style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
-            title={documentName}
-          />
+        {fileUrl ? (
+          viewMode === "single" ? (
+            <iframe
+              src={buildIframeSrc(currentPage)}
+              className="w-full h-[600px] border-0"
+              style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
+              title={documentName}
+            />
+          ) : (
+            <div className="w-full space-y-4 overflow-y-auto max-h-[800px]">
+              {visiblePages.map((pageNum) => (
+                <div key={pageNum} className="flex flex-col items-center">
+                  <span className="text-xs text-slate-500 mb-1">Page {pageNum}</span>
+                  <iframe
+                    src={buildIframeSrc(pageNum)}
+                    className="w-full h-[600px] border-0"
+                    style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
+                    title={`${documentName} - Page ${pageNum}`}
+                  />
+                </div>
+              ))}
+              {hasMorePages && (
+                <div className="flex justify-center pt-4">
+                  <Button variant="outline" onClick={handleLoadMore}>
+                    Load more pages ({visiblePageCount} of {totalPages} shown)
+                  </Button>
+                </div>
+              )}
+            </div>
+          )
         ) : (
           <div className="text-center p-8">
             <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
@@ -152,26 +214,34 @@ export function DocumentViewer({
             <ZoomIn className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handlePrevPage}
-            disabled={currentPage <= 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+        {viewMode === "single" && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePrevPage}
+              disabled={currentPage <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-slate-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleNextPage}
+              disabled={currentPage >= totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        {viewMode === "all" && (
           <span className="text-sm text-slate-600">
-            Page {currentPage}
+            Showing {visiblePageCount} of {totalPages} pages
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleNextPage}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -55,6 +55,7 @@ export interface Document {
   advisorId: string;
   advisorName: string;
   fileUrl?: string;
+  totalPages?: number;
   aiAnalysis?: AIAnalysis;
   revisions: Revision[];
   revisionComment?: string;

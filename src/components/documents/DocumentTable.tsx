@@ -2,10 +2,10 @@
 
 import { formatDate } from "@/lib/utils";
 import { Document } from "@/types";
-import { FileText, Eye, RefreshCw } from "lucide-react";
-import Link from "next/link";
+import { FileText, Eye, Download } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { Button } from "@/components/ui/Button";
+import { documentsApi } from "@/lib/documents";
 
 interface DocumentTableProps {
   documents: Document[];
@@ -18,6 +18,29 @@ export function DocumentTable({
   showAdvisor = false,
   role = "ADVISOR",
 }: DocumentTableProps) {
+  const handleDownload = async (doc: Document) => {
+    try {
+      const blob = await documentsApi.download(doc.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Download failed:", err);
+    }
+  };
+
+  const handleView = (doc: Document) => {
+    const path =
+      role === "ADVISOR"
+        ? `/advisor/documents/${doc.id}`
+        : `/officer/submissions/${doc.id}`;
+    window.open(path, "_blank");
+  };
   if (documents.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
@@ -107,23 +130,22 @@ export function DocumentTable({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-2">
-                    <Link
-                      href={
-                        role === "ADVISOR"
-                          ? `/advisor/documents/${doc.id}`
-                          : `/officer/submissions/${doc.id}`
-                      }
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="View document"
+                      onClick={() => handleView(doc)}
                     >
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                    {role === "ADVISOR" &&
-                      doc.status === "NEEDS_REVISION" && (
-                        <Button variant="outline" size="sm">
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Download document"
+                      onClick={() => handleDownload(doc)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
                   </div>
                 </td>
               </tr>

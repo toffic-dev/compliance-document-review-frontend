@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { documentsApi } from "@/lib/documents";
 import { FileText, Clock, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
@@ -12,9 +13,25 @@ import { useAuth } from "@/lib/AuthContext";
 
 export default function AdvisorDashboard() {
   const { user } = useAuth();
+  const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
+
+  // Role check: show message then redirect if user is not an advisor
+  useEffect(() => {
+    if (user && user.role !== "ADVISOR") {
+      const targetDashboard = user.role === "OFFICER" ? "officer" : "login";
+      setRoleMismatchMessage(
+        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+      );
+      const timer = setTimeout(() => {
+        router.push(user.role === "OFFICER" ? "/officer" : "/login");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, router]);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -67,6 +84,11 @@ export default function AdvisorDashboard() {
       title="Dashboard"
       subtitle="Track your compliance submissions and review status"
     >
+      {roleMismatchMessage && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-center mb-6">
+          {roleMismatchMessage}
+        </div>
+      )}
       <div className="space-y-6">
         {/* Welcome */}
         <div>

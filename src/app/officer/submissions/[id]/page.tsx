@@ -28,6 +28,21 @@ export default function OfficerReview() {
   const [aiError, setAiError] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [currentStatus, setCurrentStatus] = useState<Document["status"]>("PENDING_REVIEW");
+  const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
+
+  // Role check: show message then redirect if user is not an officer
+  useEffect(() => {
+    if (user && user.role !== "OFFICER") {
+      const targetDashboard = user.role === "ADVISOR" ? "advisor" : "login";
+      setRoleMismatchMessage(
+        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+      );
+      const timer = setTimeout(() => {
+        router.push(user.role === "ADVISOR" ? "/advisor" : "/login");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, router]);
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -161,6 +176,20 @@ export default function OfficerReview() {
     }
   };
 
+  if (roleMismatchMessage) {
+    return (
+      <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Redirecting...">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-6 py-4 rounded-lg inline-block">
+              {roleMismatchMessage}
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (isLoading) {
     return (
       <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Loading...">
@@ -218,6 +247,7 @@ export default function OfficerReview() {
               documentId={document.id}
               documentName={document.name}
               fileUrl={document.fileUrl}
+              totalPages={document.totalPages}
             />
           </div>
 

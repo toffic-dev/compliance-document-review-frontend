@@ -1,6 +1,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://compliance-document-review-app-production.up.railway.app';
 const API_VERSION = '/api/v1';
 
+export { API_URL, API_VERSION };
+
 export class ApiError extends Error {
   constructor(public status: number, message: string, public rawResponse?: string) {
     super(message);

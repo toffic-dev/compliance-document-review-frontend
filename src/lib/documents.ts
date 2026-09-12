@@ -1,4 +1,4 @@
-import api from './api';
+import api, { API_URL } from './api';
 import { Document, ReviewDecision, AIAnalysis, ComplianceFlag } from '@/types';
 
 interface DocumentsResponse {
@@ -27,6 +27,7 @@ interface BackendDocument {
   advisor_id: number;
   advisor_name: string;
   version: number;
+  total_pages?: number;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -60,7 +61,7 @@ function detectFileType(fileName: string, fileType: string): Document['fileType'
   if (ext === 'docx') return 'DOCX';
   if (ext === 'xlsx') return 'XLSX';
   // Fall back to parsing file_type field
-  const upper = file_type.toUpperCase();
+  const upper = fileType.toUpperCase();
   if (upper.includes('PDF')) return 'PDF';
   if (upper.includes('WORD') || upper.includes('DOCX')) return 'DOCX';
   if (upper.includes('SHEET') || upper.includes('XLSX')) return 'XLSX';
@@ -88,6 +89,7 @@ function mapBackendDocument(doc: BackendDocument): Document {
     advisorId: String(doc.advisor_id),
     advisorName: doc.advisor_name,
     fileUrl: doc.file_url || undefined,
+    totalPages: doc.total_pages ?? 1,
     revisions: [],
     aiAnalysis: undefined,
   };
@@ -174,7 +176,7 @@ export const documentsApi = {
   download: async (id: string): Promise<Blob> => {
     const token = localStorage.getItem('token');
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/documents/${id}/download`,
+      `${API_URL}/api/v1/documents/${id}/file`,
       {
         headers: {
           Authorization: token ? `Bearer ${token}` : '',

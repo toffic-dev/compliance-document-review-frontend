@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { getInitials } from "@/lib/utils";
 import { User, Mail, Shield } from "lucide-react";
@@ -10,11 +11,41 @@ import { useAuth } from "@/lib/AuthContext";
 
 export default function AdvisorProfile() {
   const { user } = useAuth();
+  const router = useRouter();
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
+
+  // Role check: show message then redirect if user is not an advisor
+  useEffect(() => {
+    if (user && user.role !== "ADVISOR") {
+      const targetDashboard = user.role === "OFFICER" ? "officer" : "login";
+      setRoleMismatchMessage(
+        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+      );
+      const timer = setTimeout(() => {
+        router.push(user.role === "OFFICER" ? "/officer" : "/login");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, router]);
+
+  if (roleMismatchMessage) {
+    return (
+      <DashboardLayout role="ADVISOR" userName={user?.name || "Advisor"} title="Redirecting...">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-6 py-4 rounded-lg inline-block">
+              {roleMismatchMessage}
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

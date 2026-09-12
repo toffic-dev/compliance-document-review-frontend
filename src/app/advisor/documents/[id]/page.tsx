@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { documentsApi } from "@/lib/documents";
 import { StatusBadge } from "@/components/documents/StatusBadge";
@@ -17,10 +17,26 @@ import { useAuth } from "@/lib/AuthContext";
 export default function DocumentDetails() {
   const { user } = useAuth();
   const params = useParams();
+  const router = useRouter();
   const docId = params.id as string;
   const [document, setDocument] = useState<Document | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
+
+  // Role check: show message then redirect if user is not an advisor
+  useEffect(() => {
+    if (user && user.role !== "ADVISOR") {
+      const targetDashboard = user.role === "OFFICER" ? "officer" : "login";
+      setRoleMismatchMessage(
+        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+      );
+      const timer = setTimeout(() => {
+        router.push(user.role === "OFFICER" ? "/officer" : "/login");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, router]);
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -40,6 +56,20 @@ export default function DocumentDetails() {
       fetchDocument();
     }
   }, [docId]);
+
+  if (roleMismatchMessage) {
+    return (
+      <DashboardLayout role="ADVISOR" userName={user?.name || "Advisor"} title="Redirecting...">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-6 py-4 rounded-lg inline-block">
+              {roleMismatchMessage}
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (isLoading) {
     return (
