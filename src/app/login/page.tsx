@@ -22,9 +22,13 @@ function LoginForm() {
     setIsLoading(true);
     setError(null);
     try {
-      await login(email, password);
-      const redirect = searchParams.get("redirect") || "/advisor";
-      router.push(redirect);
+      const user = await login(email, password);
+      // Redirect based on user role, ignoring any redirect query param
+      if (user.role === "OFFICER") {
+        router.push("/officer");
+      } else {
+        router.push("/advisor");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid email or password");
     } finally {

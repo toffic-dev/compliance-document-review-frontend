@@ -24,9 +24,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string): Promise<User> => {
     const response = await authApi.login({ email, password });
     setUser(response.user);
+    return response.user;
   }, []);
 
   const signup = useCallback(async (full_name: string, email: string, password: string, role: 'ADVISOR' | 'OFFICER') => {
