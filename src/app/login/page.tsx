@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Shield, Mail, Lock, User, ShieldCheck } from "lucide-react";
+import { Shield, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/lib/AuthContext";
@@ -30,10 +30,6 @@ function LoginForm() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleDemoLogin = (role: "advisor" | "officer") => {
-    router.push(`/${role}`);
   };
 
   return (
@@ -81,36 +77,6 @@ function LoginForm() {
           Sign In
         </Button>
       </form>
-
-      <div className="mt-6">
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-200" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-slate-500">
-              Or continue with
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <Button
-            variant="outline"
-            onClick={() => handleDemoLogin("advisor")}
-          >
-            <User className="h-4 w-4 mr-2" />
-            Advisor
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleDemoLogin("officer")}
-          >
-            <ShieldCheck className="h-4 w-4 mr-2" />
-            Officer
-          </Button>
-        </div>
-      </div>
     </>
   );
 }
