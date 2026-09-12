@@ -54,17 +54,17 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-function detectFileType(fileName: string, fileType: string): Document['fileType'] {
+function detectFileType(fileName: string | null | undefined, fileType: string | null | undefined): Document['fileType'] {
   // Try to detect from file extension first
-  const ext = fileName.split('.').pop()?.toLowerCase();
+  const ext = fileName?.split('.').pop()?.toLowerCase();
   if (ext === 'pdf') return 'PDF';
   if (ext === 'docx') return 'DOCX';
   if (ext === 'xlsx') return 'XLSX';
   // Fall back to parsing file_type field
-  const upper = fileType.toUpperCase();
-  if (upper.includes('PDF')) return 'PDF';
-  if (upper.includes('WORD') || upper.includes('DOCX')) return 'DOCX';
-  if (upper.includes('SHEET') || upper.includes('XLSX')) return 'XLSX';
+  const upper = fileType?.toUpperCase();
+  if (upper?.includes('PDF')) return 'PDF';
+  if (upper?.includes('WORD') || upper?.includes('DOCX')) return 'DOCX';
+  if (upper?.includes('SHEET') || upper?.includes('XLSX')) return 'XLSX';
   return 'PDF'; // default fallback
 }
 
@@ -77,17 +77,21 @@ function mapBackendStatus(status: string): Document['status'] {
 }
 
 function mapBackendDocument(doc: BackendDocument): Document {
+  // Handle potential field name variations from backend
+  const fileName = doc.file_name ?? (doc as Record<string, unknown>).filename as string ?? 'Unknown';
+  const fileType = doc.file_type ?? (doc as Record<string, unknown>).mimeType as string ?? (doc as Record<string, unknown>).content_type as string ?? '';
+
   return {
     id: String(doc.id),
-    name: doc.file_name,
-    fileType: detectFileType(doc.file_name, doc.file_type),
+    name: fileName,
+    fileType: detectFileType(fileName, fileType),
     fileSize: doc.file_size != null ? formatFileSize(doc.file_size) : 'Unknown',
     version: doc.version ?? 1,
     submittedDate: doc.created_at || '',
     updatedDate: doc.updated_at || '',
     status: mapBackendStatus(doc.status),
     advisorId: String(doc.advisor_id),
-    advisorName: doc.advisor_name,
+    advisorName: doc.advisor_name ?? 'Unknown',
     fileUrl: doc.file_url || undefined,
     totalPages: doc.total_pages ?? 1,
     revisions: [],
@@ -139,8 +143,20 @@ export const documentsApi = {
         totalPages = (obj.totalPages as number) ?? 1;
       }
 
+      // Map backend documents with error handling for individual items
+      const documents: Document[] = [];
+      for (const backendDoc of backendDocs) {
+        try {
+          documents.push(mapBackendDocument(backendDoc));
+        } catch (mapErr) {
+          console.error('Failed to map document:', backendDoc, mapErr);
+          // Log the raw document shape for debugging backend contract issues
+          console.error('Raw document keys:', Object.keys(backendDoc));
+        }
+      }
+
       return {
-        documents: backendDocs.map(mapBackendDocument),
+        documents,
         total,
         page,
         totalPages,
