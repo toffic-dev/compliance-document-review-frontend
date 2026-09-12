@@ -16,7 +16,7 @@ import { Document, Toast, AIAnalysis } from "@/types";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function OfficerReview() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const params = useParams();
   const router = useRouter();
   const docId = params.id as string;
@@ -30,9 +30,16 @@ export default function OfficerReview() {
   const [currentStatus, setCurrentStatus] = useState<Document["status"]>("PENDING_REVIEW");
   const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
 
-  // Role check: show message then redirect if user is not an officer
+  // Role check: wait for auth to load, then verify role
   useEffect(() => {
-    if (user && user.role !== "OFFICER") {
+    if (authLoading) return;
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    if (user.role !== "OFFICER") {
       const targetDashboard = user.role === "ADVISOR" ? "advisor" : "login";
       setRoleMismatchMessage(
         `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
@@ -42,7 +49,7 @@ export default function OfficerReview() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     const fetchDocument = async () => {

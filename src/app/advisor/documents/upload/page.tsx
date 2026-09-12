@@ -7,13 +7,20 @@ import { FileUploader } from "@/components/documents/FileUploader";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function UploadDocument() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
 
-  // Role check: show message then redirect if user is not an advisor
+  // Role check: wait for auth to load, then verify role
   useEffect(() => {
-    if (user && user.role !== "ADVISOR") {
+    if (authLoading) return;
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    if (user.role !== "ADVISOR") {
       const targetDashboard = user.role === "OFFICER" ? "officer" : "login";
       setRoleMismatchMessage(
         `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
@@ -23,7 +30,7 @@ export default function UploadDocument() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   if (roleMismatchMessage) {
     return (

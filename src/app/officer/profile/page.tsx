@@ -10,13 +10,20 @@ import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function OfficerProfile() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
 
-  // Role check: show message then redirect if user is not an officer
+  // Role check: wait for auth to load, then verify role
   useEffect(() => {
-    if (user && user.role !== "OFFICER") {
+    if (authLoading) return;
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    if (user.role !== "OFFICER") {
       const targetDashboard = user.role === "ADVISOR" ? "advisor" : "login";
       setRoleMismatchMessage(
         `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
@@ -26,7 +33,7 @@ export default function OfficerProfile() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   if (roleMismatchMessage) {
     return (

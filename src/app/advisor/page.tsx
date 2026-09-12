@@ -12,16 +12,23 @@ import { Document } from "@/types";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function AdvisorDashboard() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
 
-  // Role check: show message then redirect if user is not an advisor
+  // Role check: wait for auth to load, then verify role
   useEffect(() => {
-    if (user && user.role !== "ADVISOR") {
+    if (authLoading) return; // Wait for auth state to resolve
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    if (user.role !== "ADVISOR") {
       const targetDashboard = user.role === "OFFICER" ? "officer" : "login";
       setRoleMismatchMessage(
         `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
@@ -31,7 +38,7 @@ export default function AdvisorDashboard() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     const fetchDocuments = async () => {
