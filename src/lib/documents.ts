@@ -53,16 +53,38 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
+function detectFileType(fileName: string, fileType: string): Document['fileType'] {
+  // Try to detect from file extension first
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return 'PDF';
+  if (ext === 'docx') return 'DOCX';
+  if (ext === 'xlsx') return 'XLSX';
+  // Fall back to parsing file_type field
+  const upper = file_type.toUpperCase();
+  if (upper.includes('PDF')) return 'PDF';
+  if (upper.includes('WORD') || upper.includes('DOCX')) return 'DOCX';
+  if (upper.includes('SHEET') || upper.includes('XLSX')) return 'XLSX';
+  return 'PDF'; // default fallback
+}
+
+function mapBackendStatus(status: string): Document['status'] {
+  const upper = status.toUpperCase().replace(/-/g, '_');
+  if (upper.includes('APPROVE')) return 'APPROVED';
+  if (upper.includes('REJECT')) return 'REJECTED';
+  if (upper.includes('REVISION')) return 'NEEDS_REVISION';
+  return 'PENDING_REVIEW'; // default fallback
+}
+
 function mapBackendDocument(doc: BackendDocument): Document {
   return {
     id: String(doc.id),
     name: doc.file_name,
-    fileType: doc.file_type.toUpperCase() as Document['fileType'],
+    fileType: detectFileType(doc.file_name, doc.file_type),
     fileSize: doc.file_size != null ? formatFileSize(doc.file_size) : 'Unknown',
-    version: doc.version,
+    version: doc.version ?? 1,
     submittedDate: doc.created_at || '',
     updatedDate: doc.updated_at || '',
-    status: doc.status.toUpperCase() as Document['status'],
+    status: mapBackendStatus(doc.status),
     advisorId: String(doc.advisor_id),
     advisorName: doc.advisor_name,
     fileUrl: doc.file_url || undefined,
@@ -89,14 +111,42 @@ function mapBackendAnalysis(analysis: BackendAnalysis): AIAnalysis {
 
 export const documentsApi = {
   getAll: async (filters?: DocumentFilters): Promise<DocumentsResponse> => {
-    const response = await api.get<{ documents: BackendDocument[]; total: number; page: number; totalPages: number }>(
-      '/documents',
-      filters as Record<string, string>
-    );
-    return {
-      ...response,
-      documents: response.documents.map(mapBackendDocument),
-    };
+    try {
+      const response = await api.get<unknown>(
+        '/documents',
+        filters as Record<string, string>
+      );
+
+      // Handle different possible response formats
+      let backendDocs: BackendDocument[] = [];
+      let total = 0;
+      let page = 1;
+      let totalPages = 1;
+
+      if (Array.isArray(response)) {
+        // Response is a plain array
+        backendDocs = response as BackendDocument[];
+        total = backendDocs.length;
+      } else if (response && typeof response === 'object') {
+        const obj = response as Record<string, unknown>;
+        // Try common property names for documents array
+        const docs = (obj.documents ?? obj.data ?? obj.items ?? obj.results ?? []) as BackendDocument[];
+        backendDocs = Array.isArray(docs) ? docs : [];
+        total = (obj.total as number) ?? backendDocs.length;
+        page = (obj.page as number) ?? 1;
+        totalPages = (obj.totalPages as number) ?? 1;
+      }
+
+      return {
+        documents: backendDocs.map(mapBackendDocument),
+        total,
+        page,
+        totalPages,
+      };
+    } catch (err) {
+      console.error('Failed to fetch documents:', err);
+      throw err;
+    }
   },
 
   getById: async (id: string): Promise<Document> => {
