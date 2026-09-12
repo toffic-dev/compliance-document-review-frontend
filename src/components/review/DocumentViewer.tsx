@@ -13,15 +13,18 @@ import {
   FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { documentsApi } from "@/lib/documents";
 
 interface DocumentViewerProps {
+  documentId: string;
   documentName: string;
-  totalPages?: number;
+  fileUrl?: string;
 }
 
 export function DocumentViewer({
+  documentId,
   documentName,
-  totalPages = 8,
+  fileUrl,
 }: DocumentViewerProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
@@ -31,7 +34,7 @@ export function DocumentViewer({
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+    setCurrentPage(currentPage + 1);
   };
 
   const handleZoomIn = () => {
@@ -40,6 +43,22 @@ export function DocumentViewer({
 
   const handleZoomOut = () => {
     if (zoom > 50) setZoom(zoom - 25);
+  };
+
+  const handleDownload = async () => {
+    try {
+      const blob = await documentsApi.download(documentId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = documentName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Download failed:", err);
+    }
   };
 
   return (
@@ -56,7 +75,7 @@ export function DocumentViewer({
           <Button variant="ghost" size="sm" title="Search">
             <Search className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" title="Download">
+          <Button variant="ghost" size="sm" title="Download" onClick={handleDownload}>
             <Download className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="sm" title="Fullscreen">
@@ -66,52 +85,21 @@ export function DocumentViewer({
       </div>
 
       {/* Document Preview */}
-      <div className="relative bg-slate-100 min-h-[500px] flex items-center justify-center p-8">
-        <div
-          className="bg-white shadow-lg rounded-lg p-8 max-w-[600px] w-full transition-transform"
-          style={{ transform: `scale(${zoom / 100})` }}
-        >
-          {/* Mock document content */}
-          <div className="space-y-4">
-            <div className="border-b border-slate-200 pb-4">
-              <h2 className="text-xl font-bold text-slate-900">
-                Compliance Document
-              </h2>
-              <p className="text-sm text-slate-500 mt-1">
-                Page {currentPage} of {totalPages}
-              </p>
-            </div>
-            <div className="space-y-3">
-              <p className="text-sm text-slate-700 leading-relaxed">
-                This document outlines the organization&apos;s policies and
-                procedures regarding data protection and compliance requirements.
-                All employees and contractors must adhere to these guidelines.
-              </p>
-              <p className="text-sm text-slate-700 leading-relaxed">
-                The organization may retain customer information indefinitely for
-                the purpose of service improvement and regulatory compliance.
-                Data subjects have the right to request deletion of their
-                personal information.
-              </p>
-              <div className="bg-amber-50 border-l-4 border-amber-400 p-3 my-4">
-                <p className="text-sm text-slate-700 italic">
-                  &ldquo;Users implicitly agree to data collection by using our
-                  services.&rdquo;
-                </p>
-              </div>
-              <p className="text-sm text-slate-700 leading-relaxed">
-                In the event of a data breach, affected parties will be notified
-                through appropriate channels. The organization maintains
-                comprehensive incident response procedures.
-              </p>
-              <p className="text-sm text-slate-700 leading-relaxed">
-                Regular audits are conducted to ensure ongoing compliance with
-                applicable regulations and industry standards. Audit findings
-                are documented and addressed through corrective action plans.
-              </p>
-            </div>
+      <div className="relative bg-slate-100 min-h-[500px] flex items-center justify-center p-4">
+        {fileUrl ? (
+          <iframe
+            src={fileUrl}
+            className="w-full h-[600px] border-0"
+            style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
+            title={documentName}
+          />
+        ) : (
+          <div className="text-center p-8">
+            <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+            <p className="text-sm text-slate-500">Document preview not available</p>
+            <p className="text-xs text-slate-400 mt-1">Click download to view the file</p>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Footer controls */}

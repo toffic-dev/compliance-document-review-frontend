@@ -36,7 +36,15 @@ export default function OfficerReview() {
         const doc = await documentsApi.getById(docId);
         setDocument(doc);
         setCurrentStatus(doc.status);
-        setAnalysis(doc.aiAnalysis);
+
+        // Fetch analysis separately since it's not included in the document response
+        try {
+          const result = await documentsApi.getAnalysis(doc.id);
+          setAnalysis(result);
+        } catch {
+          // Analysis may not be available yet; user can run it manually
+          setAnalysis(undefined);
+        }
       } catch (err) {
         setError("Failed to load document");
         console.error(err);
@@ -206,7 +214,11 @@ export default function OfficerReview() {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Document Viewer */}
           <div>
-            <DocumentViewer documentName={document.name} />
+            <DocumentViewer
+              documentId={document.id}
+              documentName={document.name}
+              fileUrl={document.fileUrl}
+            />
           </div>
 
           {/* AI Analysis */}
