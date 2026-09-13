@@ -21,15 +21,21 @@ export default function AdvisorDashboard() {
 
   // Role check: wait for auth to load, then verify role
   useEffect(() => {
-    if (authLoading) return; // Wait for auth state to resolve
+    console.log('[ADVISOR PAGE] role-check running:', { authLoading, user: user, userRole: user?.role, userRoleType: typeof user?.role });
+    if (authLoading) {
+      console.log('[ADVISOR PAGE] skipping: authLoading is true');
+      return; // Wait for auth state to resolve
+    }
 
     if (!user) {
+      console.log('[ADVISOR PAGE] redirecting: user is null/undefined');
       router.push("/login");
       return;
     }
 
     if (user.role !== "ADVISOR") {
       const targetDashboard = user.role === "OFFICER" ? "officer" : "login";
+      console.log(`[ADVISOR PAGE] role mismatch: user.role is "${user.role}", redirecting to ${targetDashboard}`);
       setRoleMismatchMessage(
         `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
       );
@@ -38,6 +44,8 @@ export default function AdvisorDashboard() {
       }, 2000);
       return () => clearTimeout(timer);
     }
+
+    console.log('[ADVISOR PAGE] role check passed: user.role is ADVISOR');
   }, [user, authLoading, router]);
 
   useEffect(() => {
