@@ -262,7 +262,6 @@ export default function OfficerReview() {
             <DocumentViewer
               documentId={document.id}
               documentName={document.name}
-              fileUrl={document.fileUrl}
               totalPages={document.totalPages}
             />
           </div>

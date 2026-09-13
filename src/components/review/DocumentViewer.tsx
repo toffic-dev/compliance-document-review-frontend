@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import {
   ChevronLeft,
@@ -20,7 +20,6 @@ import { documentsApi } from "@/lib/documents";
 interface DocumentViewerProps {
   documentId: string;
   documentName: string;
-  fileUrl?: string;
   totalPages?: number;
 }
 
@@ -31,7 +30,6 @@ const PAGE_BATCH_SIZE = 15;
 export function DocumentViewer({
   documentId,
   documentName,
-  fileUrl,
   totalPages = 1,
 }: DocumentViewerProps) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,11 +38,41 @@ export function DocumentViewer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [visiblePageCount, setVisiblePageCount] = useState(PAGE_BATCH_SIZE);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(true);
+  const [previewError, setPreviewError] = useState(false);
+
+  // Fetch file as blob and create object URL for authenticated preview
+  const fetchPreview = useCallback(async () => {
+    setPreviewLoading(true);
+    setPreviewError(false);
+    try {
+      const blob = await documentsApi.download(documentId);
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+    } catch (err) {
+      console.error("[DocumentViewer] Failed to load preview:", err);
+      setPreviewError(true);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [documentId]);
+
+  useEffect(() => {
+    fetchPreview();
+    return () => {
+      // Clean up object URL on unmount or document change
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, [fetchPreview]);
 
   // Reset visible pages when document changes
   useEffect(() => {
     setVisiblePageCount(PAGE_BATCH_SIZE);
-  }, [fileUrl]);
+  }, [documentId]);
 
   const handleLoadMore = () => {
     setVisiblePageCount((prev) => Math.min(prev + PAGE_BATCH_SIZE, totalPages));
@@ -105,7 +133,7 @@ export function DocumentViewer({
 
   // Build iframe URL with page fragment for PDF navigation
   const buildIframeSrc = (pageNum: number) => {
-    return fileUrl ? `${fileUrl}#page=${pageNum}` : undefined;
+    return previewUrl ? `${previewUrl}#page=${pageNum}` : undefined;
   };
 
   // Generate array of page numbers for all-pages view
@@ -152,7 +180,22 @@ export function DocumentViewer({
 
       {/* Document Preview */}
       <div ref={containerRef} className="relative bg-slate-100 min-h-[500px] flex items-center justify-center p-4">
-        {fileUrl ? (
+        {previewLoading ? (
+          <div className="text-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto mb-4"></div>
+            <p className="text-sm text-slate-500">Loading document preview...</p>
+          </div>
+        ) : previewError ? (
+          <div className="text-center p-8">
+            <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+            <p className="text-sm text-slate-500">Failed to load document preview</p>
+            <p className="text-xs text-slate-400 mt-1">Authentication or network error — try downloading instead</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={handleDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download instead
+            </Button>
+          </div>
+        ) : previewUrl ? (
           viewMode === "single" ? (
             <iframe
               src={buildIframeSrc(currentPage)}

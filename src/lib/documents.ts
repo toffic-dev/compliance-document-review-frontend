@@ -91,7 +91,7 @@ function mapBackendDocument(doc: BackendDocument): Document {
     updatedDate: doc.updated_at || '',
     status: mapBackendStatus(doc.status),
     advisorId: String(doc.advisor_id),
-    advisorName: doc.advisor_name ?? 'Unknown',
+    advisorName: doc.advisor_name ?? (doc as unknown as { advisor?: { full_name?: string; name?: string } }).advisor?.full_name ?? (doc as unknown as { advisor?: { full_name?: string; name?: string } }).advisor?.name ?? (doc as unknown as { submitted_by?: string }).submitted_by ?? 'Unknown',
     fileUrl: doc.file_url || undefined,
     totalPages: doc.total_pages ?? 1,
     revisions: [],
@@ -169,6 +169,7 @@ export const documentsApi = {
 
   getById: async (id: string): Promise<Document> => {
     const doc = await api.get<BackendDocument>(`/documents/${id}`);
+    console.log('[DOCUMENT DETAIL] raw getById response:', JSON.stringify(doc, null, 2));
     return mapBackendDocument(doc);
   },
 
