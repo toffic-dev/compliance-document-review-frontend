@@ -18,8 +18,8 @@ export function StatusTimeline({ status }: StatusTimelineProps) {
 
   const getStepStatus = (stepKey: string) => {
     if (status === "PENDING_REVIEW") {
-      if (stepKey === "submitted" || stepKey === "analysis") return "completed";
-      if (stepKey === "review") return "current";
+      if (stepKey === "submitted") return "completed";
+      if (stepKey === "analysis") return "current";
       return "upcoming";
     }
     if (status === "APPROVED") {

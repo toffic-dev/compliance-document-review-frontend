@@ -6,6 +6,7 @@ import { FileText, Eye, Download } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { documentsApi } from "@/lib/documents";
+import { useRouter } from "next/navigation";
 
 interface DocumentTableProps {
   documents: Document[];
@@ -18,6 +19,8 @@ export function DocumentTable({
   showAdvisor = false,
   role = "ADVISOR",
 }: DocumentTableProps) {
+  const router = useRouter();
+
   const handleDownload = async (doc: Document) => {
     try {
       const blob = await documentsApi.download(doc.id);
@@ -40,7 +43,7 @@ export function DocumentTable({
       normalizedRole === "ADVISOR"
         ? `/advisor/documents/${doc.id}`
         : `/officer/submissions/${doc.id}`;
-    window.open(path, "_blank");
+    router.push(path);
   };
   if (documents.length === 0) {
     return (
@@ -153,6 +156,51 @@ export function DocumentTable({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile card layout - visible only on small screens */}
+      <div className="md:hidden divide-y divide-slate-200">
+        {documents.map((doc) => (
+          <div key={doc.id} className="p-4 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="h-5 w-5 text-slate-400 shrink-0" />
+                <span className="text-sm font-medium text-slate-900 truncate">
+                  {doc.name}
+                </span>
+              </div>
+              <StatusBadge status={doc.status} />
+            </div>
+            <div className="flex items-center gap-4 text-xs text-slate-500">
+              <span>{doc.fileType}</span>
+              <span>v{doc.version}</span>
+              {showAdvisor && <span>{doc.advisorName}</span>}
+            </div>
+            <div className="flex items-center gap-4 text-xs text-slate-500">
+              <span>Submitted {formatDate(doc.submittedDate)}</span>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                title="View document"
+                onClick={() => handleView(doc)}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                View
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                title="Download document"
+                onClick={() => handleDownload(doc)}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Download
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
