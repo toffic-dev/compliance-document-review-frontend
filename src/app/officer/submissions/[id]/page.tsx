@@ -54,12 +54,19 @@ export default function OfficerReview() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
+    if (document) {
+      console.log('[DOCUMENT DETAIL] preview file URL:', document.fileUrl);
+    }
+  }, [document]);
+
+  useEffect(() => {
     const fetchDocument = async () => {
       try {
         setIsLoading(true);
         const doc = await documentsApi.getById(docId);
         setDocument(doc);
         setCurrentStatus(doc.status);
+        console.log('[DOCUMENT DETAIL] raw document data:', JSON.stringify(doc, null, 2));
 
         // Fetch analysis separately since it's not included in the document response
         try {
