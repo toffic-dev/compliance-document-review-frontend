@@ -78,8 +78,8 @@ function mapBackendStatus(status: string): Document['status'] {
 
 function mapBackendDocument(doc: BackendDocument): Document {
   // Handle potential field name variations from backend
-  const fileName = doc.file_name ?? (doc as Record<string, unknown>).filename as string ?? 'Unknown';
-  const fileType = doc.file_type ?? (doc as Record<string, unknown>).mimeType as string ?? (doc as Record<string, unknown>).content_type as string ?? '';
+  const fileName = doc.file_name ?? (doc as unknown as Record<string, unknown>).filename as string ?? 'Unknown';
+  const fileType = doc.file_type ?? (doc as unknown as Record<string, unknown>).mimeType as string ?? (doc as unknown as Record<string, unknown>).content_type as string ?? '';
 
   return {
     id: String(doc.id),
