@@ -10,7 +10,7 @@ import { documentsApi } from "@/lib/documents";
 interface DocumentTableProps {
   documents: Document[];
   showAdvisor?: boolean;
-  role?: "ADVISOR" | "OFFICER";
+  role?: "ADVISOR" | "COMPLIANCE_OFFICER";
 }
 
 export function DocumentTable({

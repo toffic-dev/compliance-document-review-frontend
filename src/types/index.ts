@@ -4,7 +4,7 @@ export type DocumentStatus =
   | "REJECTED"
   | "NEEDS_REVISION";
 
-export type UserRole = "ADVISOR" | "OFFICER";
+export type UserRole = "ADVISOR" | "COMPLIANCE_OFFICER";
 
 export type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 

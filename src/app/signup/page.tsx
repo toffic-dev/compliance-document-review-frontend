@@ -16,7 +16,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<"ADVISOR" | "OFFICER">("ADVISOR");
+  const [role, setRole] = useState<"ADVISOR" | "COMPLIANCE_OFFICER">("ADVISOR");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,9 +124,9 @@ export default function SignupPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRole("OFFICER")}
+                    onClick={() => setRole("COMPLIANCE_OFFICER")}
                     className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                      role === "OFFICER"
+                      role === "COMPLIANCE_OFFICER"
                         ? "border-slate-900 bg-slate-900 text-white"
                         : "border-slate-300 text-slate-700 hover:bg-slate-50"
                     }`}

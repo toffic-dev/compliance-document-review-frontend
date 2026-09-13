@@ -11,7 +11,7 @@ interface SignupRequest {
   full_name: string;
   email: string;
   password: string;
-  role: 'ADVISOR' | 'OFFICER';
+  role: 'ADVISOR' | 'COMPLIANCE_OFFICER';
 }
 
 interface AuthResponse {
@@ -33,14 +33,10 @@ function mapBackendUser(backendUser: { id: string; full_name: string; email: str
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     const response = await api.post<{ user: { id: string; full_name: string; email: string; role: string; avatar?: string }; token: string }>('/auth/login', data);
-    console.log('[AUTH LOGIN] raw API response:', JSON.stringify(response));
-    console.log('[AUTH LOGIN] response.user.role raw value:', JSON.stringify(response.user.role));
     const user = mapBackendUser(response.user);
-    console.log('[AUTH LOGIN] mapped user.role:', JSON.stringify(user.role));
     if (response.token) {
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(user));
-      console.log('[AUTH LOGIN] stored user in localStorage:', localStorage.getItem('user'));
     }
     return { user, token: response.token };
   },

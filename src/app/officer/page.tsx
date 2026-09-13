@@ -21,21 +21,17 @@ export default function OfficerDashboard() {
   // Role check: wait for auth to load, then verify role
   useEffect(() => {
     const normalizedRole = normalizeRole(user?.role);
-    console.log('[OFFICER PAGE] role-check running:', { authLoading, user: user, userRole: user?.role, normalizedRole, userRoleType: typeof user?.role });
     if (authLoading) {
-      console.log('[OFFICER PAGE] skipping: authLoading is true');
       return; // Wait for auth state to resolve
     }
 
     if (!user) {
-      console.log('[OFFICER PAGE] redirecting: user is null/undefined');
       router.push("/login");
       return;
     }
 
-    if (normalizedRole !== "OFFICER") {
+    if (normalizedRole !== "COMPLIANCE_OFFICER") {
       const targetDashboard = normalizedRole === "ADVISOR" ? "advisor" : "login";
-      console.log(`[OFFICER PAGE] role mismatch: normalizedRole is "${normalizedRole}", redirecting to ${targetDashboard}`);
       setRoleMismatchMessage(
         `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
       );
@@ -44,8 +40,6 @@ export default function OfficerDashboard() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-
-    console.log('[OFFICER PAGE] role check passed: normalizedRole is OFFICER');
   }, [user, authLoading, router]);
 
   useEffect(() => {
@@ -79,7 +73,7 @@ export default function OfficerDashboard() {
 
   if (roleMismatchMessage) {
     return (
-      <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Redirecting...">
+      <DashboardLayout role="COMPLIANCE_OFFICER" userName={user?.name || "Officer"} title="Redirecting...">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="bg-amber-50 border border-amber-200 text-amber-800 px-6 py-4 rounded-lg inline-block">
@@ -94,7 +88,7 @@ export default function OfficerDashboard() {
   if (isLoading) {
     return (
       <DashboardLayout
-        role="OFFICER"
+        role="COMPLIANCE_OFFICER"
         userName={user?.name || "Officer"}
         title="Compliance Review"
         subtitle="Review and process submitted documents"
@@ -108,7 +102,7 @@ export default function OfficerDashboard() {
 
   return (
     <DashboardLayout
-      role="OFFICER"
+      role="COMPLIANCE_OFFICER"
       userName={user?.name || "Officer"}
       title="Compliance Review"
       subtitle="Review and process submitted documents"
@@ -181,7 +175,7 @@ export default function OfficerDashboard() {
         {/* Submission Queue */}
         <div>
           <h3 className="text-base font-semibold text-slate-900 mb-4">Submission Queue</h3>
-          <DocumentTable documents={pendingDocs} showAdvisor role="OFFICER" />
+          <DocumentTable documents={pendingDocs} showAdvisor role="COMPLIANCE_OFFICER" />
         </div>
       </div>
     </DashboardLayout>

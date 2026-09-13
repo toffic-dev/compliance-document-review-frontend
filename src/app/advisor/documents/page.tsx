@@ -34,12 +34,12 @@ export default function AdvisorDocuments() {
 
     const normalizedRole = normalizeRole(user.role);
     if (normalizedRole !== "ADVISOR") {
-      const targetDashboard = normalizedRole === "OFFICER" ? "officer" : "login";
+      const targetDashboard = normalizedRole === "COMPLIANCE_OFFICER" ? "officer" : "login";
       setRoleMismatchMessage(
         `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
       );
       const timer = setTimeout(() => {
-        router.push(normalizedRole === "OFFICER" ? "/officer" : "/login");
+        router.push(normalizedRole === "COMPLIANCE_OFFICER" ? "/officer" : "/login");
       }, 2000);
       return () => clearTimeout(timer);
     }

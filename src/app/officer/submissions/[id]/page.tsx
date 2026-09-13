@@ -41,7 +41,7 @@ export default function OfficerReview() {
     }
 
     const normalizedRole = normalizeRole(user.role);
-    if (normalizedRole !== "OFFICER") {
+    if (normalizedRole !== "COMPLIANCE_OFFICER") {
       const targetDashboard = normalizedRole === "ADVISOR" ? "advisor" : "login";
       setRoleMismatchMessage(
         `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
@@ -187,7 +187,7 @@ export default function OfficerReview() {
 
   if (roleMismatchMessage) {
     return (
-      <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Redirecting...">
+      <DashboardLayout role="COMPLIANCE_OFFICER" userName={user?.name || "Officer"} title="Redirecting...">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="bg-amber-50 border border-amber-200 text-amber-800 px-6 py-4 rounded-lg inline-block">
@@ -201,7 +201,7 @@ export default function OfficerReview() {
 
   if (isLoading) {
     return (
-      <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Loading...">
+      <DashboardLayout role="COMPLIANCE_OFFICER" userName={user?.name || "Officer"} title="Loading...">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
         </div>
@@ -211,7 +211,7 @@ export default function OfficerReview() {
 
   if (error || !document) {
     return (
-      <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Document Not Found">
+      <DashboardLayout role="COMPLIANCE_OFFICER" userName={user?.name || "Officer"} title="Document Not Found">
         <div className="text-center py-12">
           <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-slate-900 mb-2">Document not found</h2>
@@ -227,7 +227,7 @@ export default function OfficerReview() {
   }
 
   return (
-    <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Review Document" subtitle={document.name}>
+    <DashboardLayout role="COMPLIANCE_OFFICER" userName={user?.name || "Officer"} title="Review Document" subtitle={document.name}>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="space-y-6">
         <Link href="/officer/submissions" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">

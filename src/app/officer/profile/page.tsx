@@ -24,7 +24,7 @@ export default function OfficerProfile() {
     }
 
     const normalizedRole = normalizeRole(user.role);
-    if (normalizedRole !== "OFFICER") {
+    if (normalizedRole !== "COMPLIANCE_OFFICER") {
       const targetDashboard = normalizedRole === "ADVISOR" ? "advisor" : "login";
       setRoleMismatchMessage(
         `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
@@ -38,7 +38,7 @@ export default function OfficerProfile() {
 
   if (roleMismatchMessage) {
     return (
-      <DashboardLayout role="OFFICER" userName={user?.name || "Officer"} title="Redirecting...">
+      <DashboardLayout role="COMPLIANCE_OFFICER" userName={user?.name || "Officer"} title="Redirecting...">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="bg-amber-50 border border-amber-200 text-amber-800 px-6 py-4 rounded-lg inline-block">
@@ -52,7 +52,7 @@ export default function OfficerProfile() {
 
   return (
     <DashboardLayout
-      role="OFFICER"
+      role="COMPLIANCE_OFFICER"
       userName={user?.name || "Officer"}
       title="Profile"
       subtitle="Manage your account settings"

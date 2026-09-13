@@ -23,15 +23,15 @@ export const users: User[] = [
     id: "officer-1",
     name: "Dr. Emily Roberts",
     email: "emily.roberts@compliance.com",
-    role: "OFFICER",
+    role: "COMPLIANCE_OFFICER",
   },
   {
     id: "officer-2",
     name: "James Wilson",
     email: "james.wilson@compliance.com",
-    role: "OFFICER",
+    role: "COMPLIANCE_OFFICER",
   },
 ];
 
 export const advisors = users.filter((u) => u.role === "ADVISOR");
-export const officers = users.filter((u) => u.role === "OFFICER");
+export const officers = users.filter((u) => u.role === "COMPLIANCE_OFFICER");

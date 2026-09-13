@@ -33,7 +33,7 @@ export default function OfficerSubmissions() {
     }
 
     const normalizedRole = normalizeRole(user.role);
-    if (normalizedRole !== "OFFICER") {
+    if (normalizedRole !== "COMPLIANCE_OFFICER") {
       const targetDashboard = normalizedRole === "ADVISOR" ? "advisor" : "login";
       setRoleMismatchMessage(
         `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
@@ -110,7 +110,7 @@ export default function OfficerSubmissions() {
 
   return (
     <DashboardLayout
-      role="OFFICER"
+      role="COMPLIANCE_OFFICER"
       userName={user?.name || "Officer"}
       title="Submissions"
       subtitle="Review all submitted compliance documents"
@@ -192,7 +192,7 @@ export default function OfficerSubmissions() {
         </div>
 
         {/* Documents Table */}
-        <DocumentTable documents={filteredDocs} showAdvisor role="OFFICER" />
+        <DocumentTable documents={filteredDocs} showAdvisor role="COMPLIANCE_OFFICER" />
       </div>
       )}
     </DashboardLayout>
