@@ -21,3 +21,12 @@ export function getInitials(name: string): string {
     .toUpperCase()
     .slice(0, 2);
 }
+
+/**
+ * Normalize a role string for case-insensitive comparison.
+ * Trims whitespace and converts to uppercase.
+ * Handles null/undefined safely.
+ */
+export function normalizeRole(role: string | null | undefined): string {
+  return (role ?? "").trim().toUpperCase();
+}

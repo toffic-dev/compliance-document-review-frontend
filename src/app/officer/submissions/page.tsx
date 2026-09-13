@@ -9,6 +9,7 @@ import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { DocumentStatus, Severity, Document } from "@/types";
 import { useAuth } from "@/lib/AuthContext";
+import { normalizeRole } from "@/lib/utils";
 
 export default function OfficerSubmissions() {
   const { user, isLoading: authLoading } = useAuth();
@@ -31,13 +32,14 @@ export default function OfficerSubmissions() {
       return;
     }
 
-    if (user.role !== "OFFICER") {
-      const targetDashboard = user.role === "ADVISOR" ? "advisor" : "login";
+    const normalizedRole = normalizeRole(user.role);
+    if (normalizedRole !== "OFFICER") {
+      const targetDashboard = normalizedRole === "ADVISOR" ? "advisor" : "login";
       setRoleMismatchMessage(
-        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+        `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
       );
       const timer = setTimeout(() => {
-        router.push(user.role === "ADVISOR" ? "/advisor" : "/login");
+        router.push(normalizedRole === "ADVISOR" ? "/advisor" : "/login");
       }, 2000);
       return () => clearTimeout(timer);
     }

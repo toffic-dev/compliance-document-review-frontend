@@ -7,7 +7,7 @@ import { documentsApi } from "@/lib/documents";
 import { StatusBadge } from "@/components/documents/StatusBadge";
 import { StatusTimeline } from "@/components/documents/StatusTimeline";
 import { RevisionHistory } from "@/components/documents/RevisionHistory";
-import { formatDate } from "@/lib/utils";
+import { formatDate, normalizeRole } from "@/lib/utils";
 import { FileText, ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -33,13 +33,14 @@ export default function DocumentDetails() {
       return;
     }
 
-    if (user.role !== "ADVISOR") {
-      const targetDashboard = user.role === "OFFICER" ? "officer" : "login";
+    const normalizedRole = normalizeRole(user.role);
+    if (normalizedRole !== "ADVISOR") {
+      const targetDashboard = normalizedRole === "OFFICER" ? "officer" : "login";
       setRoleMismatchMessage(
-        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+        `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
       );
       const timer = setTimeout(() => {
-        router.push(user.role === "OFFICER" ? "/officer" : "/login");
+        router.push(normalizedRole === "OFFICER" ? "/officer" : "/login");
       }, 2000);
       return () => clearTimeout(timer);
     }

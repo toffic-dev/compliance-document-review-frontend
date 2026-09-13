@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDate } from "@/lib/utils";
+import { formatDate, normalizeRole } from "@/lib/utils";
 import { Document } from "@/types";
 import { FileText, Eye, Download } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
@@ -34,9 +34,10 @@ export function DocumentTable({
     }
   };
 
+  const normalizedRole = normalizeRole(role);
   const handleView = (doc: Document) => {
     const path =
-      role === "ADVISOR"
+      normalizedRole === "ADVISOR"
         ? `/advisor/documents/${doc.id}`
         : `/officer/submissions/${doc.id}`;
     window.open(path, "_blank");
@@ -49,7 +50,7 @@ export function DocumentTable({
           No documents found
         </h3>
         <p className="text-sm text-slate-500">
-          {role === "ADVISOR"
+          {normalizedRole === "ADVISOR"
             ? "Upload your first compliance document to get started."
             : "No submissions match your current filters."}
         </p>

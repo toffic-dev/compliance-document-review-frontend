@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, getInitials } from "@/lib/utils";
+import { cn, getInitials, normalizeRole } from "@/lib/utils";
 import {
   LayoutDashboard,
   FileText,
@@ -46,7 +46,7 @@ export function Sidebar({ role, userName, isOpen, onClose }: SidebarProps) {
     { href: "/officer/profile", label: "Profile", icon: User },
   ];
 
-  const links = role === "ADVISOR" ? advisorLinks : officerLinks;
+  const links = normalizeRole(role) === "ADVISOR" ? advisorLinks : officerLinks;
 
   return (
     <>

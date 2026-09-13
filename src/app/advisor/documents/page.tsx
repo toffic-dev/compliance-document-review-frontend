@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { DocumentStatus, Document } from "@/types";
 import { useAuth } from "@/lib/AuthContext";
+import { normalizeRole } from "@/lib/utils";
 
 export default function AdvisorDocuments() {
   const { user, isLoading: authLoading } = useAuth();
@@ -31,13 +32,14 @@ export default function AdvisorDocuments() {
       return;
     }
 
-    if (user.role !== "ADVISOR") {
-      const targetDashboard = user.role === "OFFICER" ? "officer" : "login";
+    const normalizedRole = normalizeRole(user.role);
+    if (normalizedRole !== "ADVISOR") {
+      const targetDashboard = normalizedRole === "OFFICER" ? "officer" : "login";
       setRoleMismatchMessage(
-        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+        `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
       );
       const timer = setTimeout(() => {
-        router.push(user.role === "OFFICER" ? "/officer" : "/login");
+        router.push(normalizedRole === "OFFICER" ? "/officer" : "/login");
       }, 2000);
       return () => clearTimeout(timer);
     }

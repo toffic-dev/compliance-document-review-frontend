@@ -1,5 +1,6 @@
 import api, { ApiError } from './api';
 import { User, UserRole } from '@/types';
+import { normalizeRole } from './utils';
 
 interface LoginRequest {
   email: string;
@@ -24,7 +25,7 @@ function mapBackendUser(backendUser: { id: string; full_name: string; email: str
     id: backendUser.id,
     name: backendUser.full_name,
     email: backendUser.email,
-    role: backendUser.role as UserRole,
+    role: normalizeRole(backendUser.role) as UserRole,
     avatar: backendUser.avatar,
   };
 }

@@ -24,7 +24,9 @@ function LoginForm() {
     try {
       const user = await login(email, password);
       // Redirect based on user role, ignoring any redirect query param
-      if (user.role === "OFFICER") {
+      const normalizedRole = (user.role ?? "").trim().toUpperCase();
+      console.log('[LOGIN FORM] user.role raw:', JSON.stringify(user.role), 'normalized:', normalizedRole);
+      if (normalizedRole === "OFFICER") {
         router.push("/officer");
       } else {
         router.push("/advisor");

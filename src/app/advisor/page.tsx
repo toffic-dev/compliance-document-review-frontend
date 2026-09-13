@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Document } from "@/types";
 import { useAuth } from "@/lib/AuthContext";
+import { normalizeRole } from "@/lib/utils";
 
 export default function AdvisorDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -21,7 +22,8 @@ export default function AdvisorDashboard() {
 
   // Role check: wait for auth to load, then verify role
   useEffect(() => {
-    console.log('[ADVISOR PAGE] role-check running:', { authLoading, user: user, userRole: user?.role, userRoleType: typeof user?.role });
+    const normalizedRole = normalizeRole(user?.role);
+    console.log('[ADVISOR PAGE] role-check running:', { authLoading, user: user, userRole: user?.role, normalizedRole, userRoleType: typeof user?.role });
     if (authLoading) {
       console.log('[ADVISOR PAGE] skipping: authLoading is true');
       return; // Wait for auth state to resolve
@@ -33,19 +35,19 @@ export default function AdvisorDashboard() {
       return;
     }
 
-    if (user.role !== "ADVISOR") {
-      const targetDashboard = user.role === "OFFICER" ? "officer" : "login";
-      console.log(`[ADVISOR PAGE] role mismatch: user.role is "${user.role}", redirecting to ${targetDashboard}`);
+    if (normalizedRole !== "ADVISOR") {
+      const targetDashboard = normalizedRole === "OFFICER" ? "officer" : "login";
+      console.log(`[ADVISOR PAGE] role mismatch: normalizedRole is "${normalizedRole}", redirecting to ${targetDashboard}`);
       setRoleMismatchMessage(
-        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+        `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
       );
       const timer = setTimeout(() => {
-        router.push(user.role === "OFFICER" ? "/officer" : "/login");
+        router.push(normalizedRole === "OFFICER" ? "/officer" : "/login");
       }, 2000);
       return () => clearTimeout(timer);
     }
 
-    console.log('[ADVISOR PAGE] role check passed: user.role is ADVISOR');
+    console.log('[ADVISOR PAGE] role check passed: normalizedRole is ADVISOR');
   }, [user, authLoading, router]);
 
   useEffect(() => {

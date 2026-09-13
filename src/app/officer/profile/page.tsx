@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { getInitials } from "@/lib/utils";
+import { getInitials, normalizeRole } from "@/lib/utils";
 import { User, Mail, Shield } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -23,13 +23,14 @@ export default function OfficerProfile() {
       return;
     }
 
-    if (user.role !== "OFFICER") {
-      const targetDashboard = user.role === "ADVISOR" ? "advisor" : "login";
+    const normalizedRole = normalizeRole(user.role);
+    if (normalizedRole !== "OFFICER") {
+      const targetDashboard = normalizedRole === "ADVISOR" ? "advisor" : "login";
       setRoleMismatchMessage(
-        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+        `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
       );
       const timer = setTimeout(() => {
-        router.push(user.role === "ADVISOR" ? "/advisor" : "/login");
+        router.push(normalizedRole === "ADVISOR" ? "/advisor" : "/login");
       }, 2000);
       return () => clearTimeout(timer);
     }

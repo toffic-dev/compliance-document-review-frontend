@@ -14,6 +14,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Document, Toast, AIAnalysis } from "@/types";
 import { useAuth } from "@/lib/AuthContext";
+import { normalizeRole } from "@/lib/utils";
 
 export default function OfficerReview() {
   const { user, isLoading: authLoading } = useAuth();
@@ -39,13 +40,14 @@ export default function OfficerReview() {
       return;
     }
 
-    if (user.role !== "OFFICER") {
-      const targetDashboard = user.role === "ADVISOR" ? "advisor" : "login";
+    const normalizedRole = normalizeRole(user.role);
+    if (normalizedRole !== "OFFICER") {
+      const targetDashboard = normalizedRole === "ADVISOR" ? "advisor" : "login";
       setRoleMismatchMessage(
-        `This account is registered as an ${user.role.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
+        `This account is registered as an ${normalizedRole.toLowerCase()} — redirecting to ${targetDashboard} dashboard...`
       );
       const timer = setTimeout(() => {
-        router.push(user.role === "ADVISOR" ? "/advisor" : "/login");
+        router.push(normalizedRole === "ADVISOR" ? "/advisor" : "/login");
       }, 2000);
       return () => clearTimeout(timer);
     }

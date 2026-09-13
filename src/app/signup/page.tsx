@@ -7,6 +7,7 @@ import { Shield, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/lib/AuthContext";
+import { normalizeRole } from "@/lib/utils";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -32,7 +33,7 @@ export default function SignupPage() {
 
     try {
       await signup(name, email, password, role);
-      router.push(role === "ADVISOR" ? "/advisor" : "/officer");
+      router.push(normalizeRole(role) === "ADVISOR" ? "/advisor" : "/officer");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create account");
     } finally {
