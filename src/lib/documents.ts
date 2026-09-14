@@ -26,6 +26,7 @@ interface BackendDocument {
   status: string;
   advisor_id: number;
   advisor_name: string;
+  advisorName?: string;
   version: number;
   total_pages?: number;
   created_at: string | null;
