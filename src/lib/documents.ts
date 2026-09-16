@@ -116,6 +116,34 @@ function mapBackendAnalysis(analysis: BackendAnalysis): AIAnalysis {
   };
 }
 
+// The `/download` endpoint is expected to stream the raw file bytes, but if it
+// ever answers 200 with a JSON body instead, that body is an envelope (a URL or
+// metadata) -- never the file itself. These are the keys we know how to unwrap.
+const FILE_URL_KEYS = [
+  'download_url', 'downloadUrl',
+  'file_url', 'fileUrl',
+  'signed_url', 'signedUrl',
+  'presigned_url', 'presignedUrl',
+  'url',
+];
+
+function extractFileUrl(payload: unknown): string | null {
+  if (typeof payload === 'string') {
+    return /^https?:\/\//i.test(payload) ? payload : null;
+  }
+  if (!payload || typeof payload !== 'object') return null;
+  const record = payload as Record<string, unknown>;
+  for (const key of FILE_URL_KEYS) {
+    const value = record[key];
+    if (typeof value === 'string' && value.length > 0) return value;
+  }
+  for (const key of ['file', 'document', 'data']) {
+    const nested = extractFileUrl(record[key]);
+    if (nested) return nested;
+  }
+  return null;
+}
+
 export const documentsApi = {
   getAll: async (filters?: DocumentFilters): Promise<DocumentsResponse> => {
     try {
@@ -224,6 +252,52 @@ export const documentsApi = {
       });
       throw new ApiError(response.status, message, rawText);
     }
+
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    console.info('[documentsApi.download] HTTP', response.status, {
+      documentId: id,
+      contentType,
+      contentDisposition: response.headers.get('content-disposition'),
+      contentLength: response.headers.get('content-length'),
+    });
+
+    // Verify we actually received file bytes. A JSON body here means the backend
+    // sent an envelope rather than the file, so unwrap it instead of treating the
+    // JSON itself as the document (that renders as raw JSON in the preview).
+    if (contentType.includes('json')) {
+      const rawText = await response.text();
+      let payload: unknown = null;
+      try {
+        payload = JSON.parse(rawText);
+      } catch {
+        // Claimed to be JSON but was not parseable; reported by the error below
+      }
+      const fileUrl = extractFileUrl(payload);
+      if (!fileUrl) {
+        throw new ApiError(
+          response.status,
+          `Download endpoint returned JSON instead of a file. Body: ${rawText.slice(0, 300)}`,
+          rawText
+        );
+      }
+      // Send the bearer token only when the URL points at our own backend;
+      // signed/external URLs must be fetched without extra headers.
+      const fileResponse = await fetch(
+        fileUrl,
+        fileUrl.startsWith(API_URL) && token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : undefined
+      );
+      if (!fileResponse.ok) {
+        throw new ApiError(
+          fileResponse.status,
+          `Backend returned a file URL but fetching it failed (HTTP ${fileResponse.status})`,
+          await fileResponse.text().catch(() => '')
+        );
+      }
+      return fileResponse.blob();
+    }
+
     return response.blob();
   },
 };

@@ -27,6 +27,32 @@ type ViewMode = "single" | "all";
 
 const PAGE_BATCH_SIZE = 15;
 
+/**
+ * Blobs streamed as `application/octet-stream` (or with no type at all) are
+ * downloaded by the browser rather than rendered inside the <iframe>.
+ * Re-wrap with a MIME type the browser can display inline, using the file
+ * extension as the source of truth.
+ */
+function withRenderableType(blob: Blob, fileName: string): Blob {
+  const type = (blob.type || '').toLowerCase();
+  if (
+    type.startsWith('application/pdf') ||
+    type.startsWith('image/') ||
+    type.startsWith('text/plain')
+  ) {
+    return blob;
+  }
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  const inferred =
+    ext === 'pdf' ? 'application/pdf'
+    : ext === 'txt' ? 'text/plain'
+    : ext === 'png' ? 'image/png'
+    : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+    : ext === 'gif' ? 'image/gif'
+    : undefined;
+  return inferred ? new Blob([blob], { type: inferred }) : blob;
+}
+
 export function DocumentViewer({
   documentId,
   documentName,
@@ -48,7 +74,9 @@ export function DocumentViewer({
     setPreviewError(false);
     try {
       const blob = await documentsApi.download(documentId);
-      const url = URL.createObjectURL(blob);
+      // Ensure the object URL carries a type the browser renders inline,
+      // otherwise Chrome downloads the file instead of previewing it.
+      const url = URL.createObjectURL(withRenderableType(blob, documentName));
       setPreviewUrl(url);
     } catch (err) {
       console.error("[DocumentViewer] Failed to load preview:", err);
@@ -56,7 +84,7 @@ export function DocumentViewer({
     } finally {
       setPreviewLoading(false);
     }
-  }, [documentId]);
+  }, [documentId, documentName]);
 
   useEffect(() => {
     fetchPreview();
