@@ -1,4 +1,4 @@
-import api, { API_URL } from './api';
+import api, { API_URL, ApiError } from './api';
 import { Document, ReviewDecision, AIAnalysis, ComplianceFlag } from '@/types';
 
 interface DocumentsResponse {
@@ -192,16 +192,37 @@ export const documentsApi = {
 
   download: async (id: string): Promise<Blob> => {
     const token = localStorage.getItem('token');
+    // Use the user-facing download endpoint (HTTPBearer = the logged-in user's
+    // JWT). The `/documents/{id}/file` route is the *internal* endpoint used by
+    // the AI service: it requires an internal service token and always responds
+    // 401 {"detail":"Invalid internal service token"} to user sessions.
     const response = await fetch(
-      `${API_URL}/api/v1/documents/${id}/file`,
+      `${API_URL}/api/v1/documents/${id}/download`,
       {
         headers: {
-          Authorization: token ? `Bearer ${token}` : '',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       }
     );
     if (!response.ok) {
-      throw new Error('Download failed');
+      const rawText = await response.text().catch(() => '');
+      let detail: unknown = rawText;
+      try {
+        const parsed = JSON.parse(rawText);
+        detail = parsed?.detail ?? parsed?.message ?? parsed?.error ?? rawText;
+      } catch {
+        // Response body was not JSON; fall back to the raw text
+      }
+      const detailText = typeof detail === 'string' ? detail : JSON.stringify(detail);
+      const message = `Download failed (HTTP ${response.status})${detailText ? `: ${detailText}` : ''}`;
+      console.error('[documentsApi.download]', message, {
+        documentId: id,
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type'),
+        hasToken: !!token,
+      });
+      throw new ApiError(response.status, message, rawText);
     }
     return response.blob();
   },
