@@ -73,7 +73,9 @@ export default function OfficerReview() {
           const result = await documentsApi.getAnalysis(doc.id);
           setAnalysis(result);
         } catch {
-          // Analysis may not be available yet; user can run it manually
+          // A 404 here is expected for a document that has never been analyzed.
+          // This GET is the automatic check-on-page-load only; creating an
+          // analysis is done by the "Run Analysis" button (POST /analyze).
           setAnalysis(undefined);
         }
       } catch (err) {
@@ -88,23 +90,6 @@ export default function OfficerReview() {
       fetchDocument();
     }
   }, [docId]);
-
-  const fetchAnalysis = async () => {
-    if (!document) return;
-    try {
-      setIsAnalysisLoading(true);
-      setAiError(false);
-      const result = await documentsApi.getAnalysis(document.id);
-      setAnalysis(result);
-      addToast("Analysis loaded successfully", "success");
-    } catch (err) {
-      setAiError(true);
-      addToast("Failed to load analysis", "error");
-      console.error(err);
-    } finally {
-      setIsAnalysisLoading(false);
-    }
-  };
 
   const triggerAnalysis = async () => {
     if (!document) return;
@@ -121,14 +106,6 @@ export default function OfficerReview() {
       console.error(err);
     } finally {
       setIsAnalysisLoading(false);
-    }
-  };
-
-  const handleAnalysisRetry = () => {
-    if (analysis) {
-      triggerAnalysis();
-    } else {
-      fetchAnalysis();
     }
   };
 
@@ -272,8 +249,8 @@ export default function OfficerReview() {
               analysis={analysis}
               isLoading={isAnalysisLoading}
               isError={aiError}
-              onRetry={handleAnalysisRetry}
-              onAnalyze={analysis ? triggerAnalysis : fetchAnalysis}
+              onRetry={triggerAnalysis}
+              onAnalyze={triggerAnalysis}
               isAnalyzing={isAnalysisLoading}
             />
           </div>
