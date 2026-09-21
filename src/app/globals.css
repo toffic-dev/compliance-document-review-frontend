@@ -1,21 +1,79 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Compliance Review — theme layer
+   --------------------------------------------------------------------------
+   Every visual refinement for the product lives in this stylesheet; no
+   component or page file is touched.
+
+   Tailwind v4 compiles its utilities to `var(--...)` lookups, e.g.
+   `.bg-slate-900 { background-color: var(--color-slate-900) }`, so re-tuning
+   the tokens below in `@theme` re-skins every screen at once while keeping
+   each utility's *role* (surface, hairline, ink) intact. The rules at the
+   bottom of this file then add elevation, motion and element-level detail.
+   ========================================================================== */
+
 :root {
   --background: #ffffff;
-  --foreground: #0f172a;
+  --foreground: #131a34;
+
+  /* Brand + surface tokens (plain CSS, consumed by the rules below) */
+  --brand-ink: #182045; /* primary navy — buttons, headings, active state */
+  --brand-ink-deep: #101736; /* darkest ink — shadows */
+  --brand-accent: #4f46e5; /* indigo accent — glows, hints, selection */
+  --hairline: #e2e5f1; /* default 1px border */
+  --page: #f6f7fb; /* app canvas */
+
+  color-scheme: light;
 }
 
 @theme {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Typography — unchanged (Geist, loaded via next/font) */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Neutral ramp: Tailwind's `slate` scale re-tuned to a cool navy tint.
+     Each step keeps its original job (50 = canvas, 200 = hairline,
+     500/600 = secondary text, 900 = ink), so existing contrast
+     relationships hold while the whole app reads as one brand. */
+  --color-slate-50: #f6f7fb;
+  --color-slate-100: #eef0f7;
+  --color-slate-200: #e2e5f1;
+  --color-slate-300: #cbd1e2;
+  --color-slate-400: #98a0b8;
+  --color-slate-500: #6a7288;
+  --color-slate-600: #4b5468;
+  --color-slate-700: #363e52;
+  --color-slate-800: #2b3568; /* lighter navy → hover on primary */
+  --color-slate-900: #182045; /* ink navy → headings, primary fills */
+  --color-slate-950: #101736;
+
+  /* Roomier, softer corners */
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+
+  /* Layered, navy-tinted elevation (toasts, modals, cards) */
+  --shadow-sm: 0 1px 2px rgba(16, 23, 54, 0.05),
+    0 10px 24px -18px rgba(16, 23, 54, 0.35);
+  --shadow-md: 0 2px 4px rgba(16, 23, 54, 0.06),
+    0 14px 32px -20px rgba(16, 23, 54, 0.4);
+  --shadow-lg: 0 4px 10px rgba(16, 23, 54, 0.08),
+    0 24px 48px -24px rgba(16, 23, 54, 0.45);
+  --shadow-xl: 0 8px 20px rgba(16, 23, 54, 0.1),
+    0 40px 80px -32px rgba(16, 23, 54, 0.5);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 @keyframes fade-in {
@@ -59,10 +117,263 @@ body {
   animation-name: fade-in;
 }
 
+/* ==========================================================================
+   Element & pattern polish
+   These rules are intentionally unlayered: Tailwind's utilities live in
+   `@layer utilities`, so unlayered CSS here wins the cascade and can add
+   depth, motion and detail on top of the classes the components already use.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Canvas, selection, scrollbars, keyboard focus
+   -------------------------------------------------------------------------- */
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-color: var(--color-slate-300) transparent;
+  scrollbar-width: thin;
+}
+
+::selection {
+  background-color: rgba(24, 32, 69, 0.16);
+  color: var(--brand-ink-deep);
+}
+
+/* Slim, unobtrusive scrollbars (WebKit/Blink: Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-slate-300);
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-slate-400);
+}
+
+/* Text links (marketing nav, "Back to ..." links, helper links) had no
+   visible keyboard-focus state — inputs and buttons already ship a ring. */
+a:focus-visible {
+  outline: 2px solid rgba(24, 32, 69, 0.5);
+  outline-offset: 3px;
+  border-radius: 0.375rem;
+}
+
+/* --------------------------------------------------------------------------
+   2. Surfaces
+   Every panel in the product shares this class pattern
+   (bg-white + rounded-xl + border-slate-200). A soft, layered shadow lifts
+   the cards off the canvas without a single markup change.
+   -------------------------------------------------------------------------- */
+
+.bg-white.rounded-xl.border-slate-200 {
+  box-shadow: 0 1px 2px rgba(16, 23, 54, 0.04),
+    0 14px 30px -24px rgba(16, 23, 54, 0.45);
+}
+
+/* --------------------------------------------------------------------------
+   3. Tables — row hover, aligned numerals, tighter header
+   -------------------------------------------------------------------------- */
+
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+thead th {
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+tbody tr {
+  transition: background-color 150ms ease;
+}
+
+tbody tr:hover {
+  background-color: var(--color-slate-50);
+}
+
 .slide-in-from-top-2 {
   animation-name: slide-in-from-top-2;
 }
 
 .zoom-in-95 {
   animation-name: zoom-in-95;
+}
+
+/* --------------------------------------------------------------------------
+   4. Buttons
+   Solid primary/danger actions get a hairline sheen plus a coloured glow so
+   the main call-to-action is the focal point on every screen. The same two
+   utility classes are used by the active filter pills, the selected role
+   toggle and the "current revision" dot, so those pick up the treatment too.
+   -------------------------------------------------------------------------- */
+
+.bg-slate-900.text-white {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0) 60%
+  );
+  box-shadow: 0 1px 2px rgba(16, 23, 54, 0.2),
+    0 10px 20px -14px rgba(16, 23, 54, 0.85);
+  transition: box-shadow 200ms ease, background-color 200ms ease,
+    color 200ms ease, border-color 200ms ease, transform 120ms ease;
+}
+
+.bg-slate-900.text-white:hover {
+  box-shadow: 0 1px 2px rgba(16, 23, 54, 0.22),
+    0 16px 28px -14px rgba(16, 23, 54, 0.9);
+}
+
+.bg-slate-900.text-white:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.bg-slate-900.text-white:disabled {
+  background-image: none;
+  box-shadow: none;
+}
+
+.bg-red-600.text-white {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0) 60%
+  );
+  box-shadow: 0 1px 2px rgba(127, 29, 29, 0.2),
+    0 10px 20px -14px rgba(185, 28, 28, 0.85);
+  transition: box-shadow 200ms ease, background-color 200ms ease,
+    color 200ms ease, transform 120ms ease;
+}
+
+.bg-red-600.text-white:hover {
+  box-shadow: 0 1px 2px rgba(127, 29, 29, 0.22),
+    0 16px 28px -14px rgba(185, 28, 28, 0.9);
+}
+
+.bg-red-600.text-white:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.bg-red-600.text-white:disabled {
+  background-image: none;
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------------------------
+   5. Form controls
+   Only transitions and accents are set here — the focus ring is drawn by the
+   components' own ring utilities, so it must not be overridden.
+   -------------------------------------------------------------------------- */
+
+input,
+textarea,
+select {
+  transition: border-color 150ms ease, box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+textarea {
+  line-height: 1.6;
+}
+
+select {
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--brand-ink);
+  cursor: pointer;
+}
+
+::placeholder {
+  color: var(--color-slate-400);
+}
+
+/* --------------------------------------------------------------------------
+   6. Embedded document preview
+   -------------------------------------------------------------------------- */
+
+iframe {
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   7. Landing page accents (the only route using <section> / <h1>)
+   -------------------------------------------------------------------------- */
+
+section:has(h1) {
+  background-image: radial-gradient(
+      60% 55% at 50% 0%,
+      rgba(79, 70, 229, 0.09),
+      rgba(79, 70, 229, 0) 70%
+    ),
+    radial-gradient(
+      45% 45% at 88% 8%,
+      rgba(24, 32, 69, 0.05),
+      rgba(24, 32, 69, 0) 70%
+    );
+}
+
+#how-it-works div.bg-slate-100 {
+  background-color: rgba(79, 70, 229, 0.1);
+}
+
+#how-it-works div.bg-slate-100 svg {
+  color: var(--brand-accent);
+}
+
+#features svg.text-slate-400 {
+  color: var(--brand-accent);
+}
+
+/* --------------------------------------------------------------------------
+   8. Sidebar — brand indicator bar on the active nav item
+   -------------------------------------------------------------------------- */
+
+aside nav a {
+  position: relative;
+}
+
+aside nav a.bg-slate-100::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 60%;
+  width: 3px;
+  transform: translateY(-50%);
+  border-radius: 9999px;
+  background-color: var(--brand-ink);
+}
+
+/* --------------------------------------------------------------------------
+   9. Respect reduced-motion preferences
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  .animate-in {
+    animation: none;
+  }
 }
