@@ -7,10 +7,17 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   icon?: React.ReactNode;
+  /** Marks the label with a "*" and exposes the field as required to assistive tech. */
+  required?: boolean;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, icon, id, ...props }, ref) => {
+  (
+    { className, label, error, icon, required = false, id, ...props },
+    ref
+  ) => {
+    const errorId = id ? `${id}-error` : undefined;
+
     return (
       <div className="w-full">
         {label && (
@@ -19,6 +26,14 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             className="block text-sm font-medium text-slate-700 mb-1.5"
           >
             {label}
+            {required && (
+              <>
+                <span className="ml-0.5 text-red-600" aria-hidden="true">
+                  *
+                </span>
+                <span className="sr-only"> (required)</span>
+              </>
+            )}
           </label>
         )}
         <div className="relative">
@@ -30,6 +45,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             id={id}
+            required={required}
+            aria-required={required || undefined}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
             className={cn(
               "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400",
               "focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent",
@@ -41,7 +60,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
         </div>
-        {error && <p className="mt-1.5 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p id={errorId} role="alert" className="mt-1.5 text-sm text-red-600">
+            {error}
+          </p>
+        )}
       </div>
     );
   }

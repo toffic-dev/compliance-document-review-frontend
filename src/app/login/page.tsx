@@ -7,6 +7,17 @@ import { Shield, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/lib/AuthContext";
+import { validateEmail, validateRequired, type FieldErrors } from "@/lib/validation";
+
+type LoginField = "email" | "password";
+
+/** Order used to focus the first invalid field after a failed submit. */
+const FIELD_ORDER: LoginField[] = ["email", "password"];
+
+interface LoginValues {
+  email: string;
+  password: string;
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -16,13 +27,64 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors<LoginField>>({});
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  const values: LoginValues = { email, password };
+
+  /** Runs every rule and returns only the fields that failed. */
+  const validateAll = (next: LoginValues): FieldErrors<LoginField> => {
+    const errors: FieldErrors<LoginField> = {};
+
+    const emailError = validateEmail(next.email);
+    if (emailError) errors.email = emailError;
+
+    // Sign-in only checks presence: length rules belong to account creation.
+    const passwordError = validateRequired(next.password, "Password");
+    if (passwordError) errors.password = passwordError;
+
+    return errors;
+  };
+
+  const handleValueChange = (field: LoginField, value: string) => {
+    if (field === "email") setEmail(value);
+    if (field === "password") setPassword(value);
+
+    // Re-validate live once a problem has been shown, so messages clear as the
+    // user fixes them without nagging fields they have not reached yet.
+    if (hasSubmitted || fieldErrors[field]) {
+      setFieldErrors(validateAll({ ...values, [field]: value }));
+    }
+  };
+
+  const handleFieldBlur = (field: LoginField) => {
+    // Empty fields are reported on submit; blurring past them stays quiet.
+    if (!values[field].trim()) return;
+    setFieldErrors((prev) => ({
+      ...prev,
+      [field]: validateAll(values)[field],
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
+    setHasSubmitted(true);
+
+    const validationErrors = validateAll(values);
+    setFieldErrors(validationErrors);
+
+    const firstInvalidField = FIELD_ORDER.find(
+      (field) => validationErrors[field]
+    );
+    if (firstInvalidField) {
+      document.getElementById(firstInvalidField)?.focus();
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      const user = await login(email, password);
+      const user = await login(email.trim(), password);
       // Redirect based on user role, ignoring any redirect query param
       const normalizedRole = (user.role ?? "").trim().toUpperCase();
       if (normalizedRole === "COMPLIANCE_OFFICER" || normalizedRole === "OFFICER") {
@@ -44,14 +106,17 @@ function LoginForm() {
           {error}
         </div>
       )}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <Input
           id="email"
           label="Email"
           type="email"
           placeholder="you@example.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => handleValueChange("email", e.target.value)}
+          onBlur={() => handleFieldBlur("email")}
+          error={fieldErrors.email}
+          required
           icon={<Mail className="h-4 w-4" />}
         />
         <Input
@@ -60,7 +125,10 @@ function LoginForm() {
           type="password"
           placeholder="Enter your password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => handleValueChange("password", e.target.value)}
+          onBlur={() => handleFieldBlur("password")}
+          error={fieldErrors.password}
+          required
           icon={<Lock className="h-4 w-4" />}
         />
         <div className="flex items-center justify-between">
