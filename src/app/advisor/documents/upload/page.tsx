@@ -52,8 +52,8 @@ export default function UploadDocument() {
     <DashboardLayout
       role="ADVISOR"
       userName={user?.name || "Advisor"}
-      title="Upload Document"
-      subtitle="Submit a new compliance document for review"
+      title="Submit Document for Review"
+      subtitle="Select a document and submit it for compliance review"
     >
       <div className="max-w-2xl">
         <FileUploader advisorId={user?.id} />

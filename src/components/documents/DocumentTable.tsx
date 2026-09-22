@@ -54,7 +54,7 @@ export function DocumentTable({
         </h3>
         <p className="text-sm text-slate-500">
           {normalizedRole === "ADVISOR"
-            ? "Upload your first compliance document to get started."
+            ? "Submit your first compliance document for review to get started."
             : "No submissions match your current filters."}
         </p>
       </div>

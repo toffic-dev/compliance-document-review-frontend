@@ -193,7 +193,7 @@ export default function AdvisorDashboard() {
               Recent Documents
             </h3>
             <Link href="/advisor/documents/upload">
-              <Button size="sm">Upload Document</Button>
+              <Button size="sm">Submit for Review</Button>
             </Link>
           </div>
           <DocumentTable documents={recentDocs} role="ADVISOR" />

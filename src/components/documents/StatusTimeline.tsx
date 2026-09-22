@@ -10,8 +10,8 @@ interface StatusTimelineProps {
 
 export function StatusTimeline({ status }: StatusTimelineProps) {
   const steps = [
-    { key: "submitted", label: "Submitted", icon: CheckCircle },
-    { key: "analysis", label: "Analysis", icon: CheckCircle },
+    { key: "submitted", label: "Submitted for Review", icon: CheckCircle },
+    { key: "analysis", label: "AI Analysis", icon: CheckCircle },
     { key: "review", label: "Officer Review", icon: CheckCircle },
     { key: "decision", label: "Decision", icon: Circle },
   ];

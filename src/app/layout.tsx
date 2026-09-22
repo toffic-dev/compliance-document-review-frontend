@@ -29,6 +29,18 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white">
+        {/*
+          Scroll-reveal is offered only to browsers that can actually observe
+          it: the marker below gates the landing page's hidden "before" state,
+          so the markup stays visible without JavaScript (or without
+          IntersectionObserver). Runs before any page content is painted.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "if('IntersectionObserver' in window){document.documentElement.dataset.reveal='ready'}",
+          }}
+        />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

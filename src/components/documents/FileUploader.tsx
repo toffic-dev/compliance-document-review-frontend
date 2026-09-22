@@ -60,7 +60,7 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
       !acceptedTypes.includes(file.type) &&
       !acceptedExtensions.some((ext) => file.name.toLowerCase().endsWith(ext))
     ) {
-      return "Invalid file type. Please upload a PDF, DOCX, or XLSX file.";
+      return "Invalid file type. Please select a PDF, DOCX, or XLSX document.";
     }
     if (file.size > maxSize) {
       return "File size exceeds 10 MB limit.";
@@ -169,11 +169,11 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
       // Build detailed error message for debugging
       if (err instanceof ApiError) {
         const detail = err.rawResponse ? ` (${err.rawResponse.substring(0, 100)})` : "";
-        setError(`Upload failed [${err.status}]: ${err.message}${detail}`);
+        setError(`Submission failed [${err.status}]: ${err.message}${detail}`);
       } else if (err instanceof Error) {
-        setError(`Upload failed: ${err.message}`);
+        setError(`Submission failed: ${err.message}`);
       } else {
-        setError("Failed to upload document");
+        setError("Failed to submit the document for review");
       }
       setState("error");
     }
@@ -209,7 +209,7 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
           <CheckCircle className="h-8 w-8 text-emerald-600" />
         </div>
         <h3 className="text-lg font-semibold text-slate-900 mb-2">
-          Document uploaded
+          Document submitted for review
         </h3>
         <p className="text-sm text-slate-500 mb-1">{file?.name}</p>
         <p className="text-sm text-slate-600 font-medium">
@@ -217,7 +217,7 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
         </p>
         <div className="flex gap-3 justify-center mt-6">
           <Button variant="outline" onClick={handleRemove}>
-            Upload Another Document
+            Submit Another Document
           </Button>
           <Button onClick={() => router.push("/advisor/documents")}>
             View Documents
@@ -250,16 +250,16 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
         />
         <Upload className="h-10 w-10 text-slate-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-slate-900 mb-2">
-          Upload your document
+          Submit your document for review
         </h3>
         <p className="text-sm text-slate-500 mb-4">
-          Drag and drop your file here
+          Drag and drop your file here, or select it from your computer
         </p>
         <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}>
-          Browse Files
+          Select Document
         </Button>
         <p className="text-xs text-slate-400 mt-4">
-          PDF, DOCX, XLSX • Maximum size: 10 MB
+          Accepted formats: PDF, DOCX, XLSX • Maximum size: 10 MB
         </p>
 
         {error && (
@@ -298,7 +298,7 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
               </button>
             </div>
             <Button className="w-full mt-4" onClick={handleUpload}>
-              Upload Document
+              Submit Document for Review
             </Button>
           </div>
         )}
@@ -306,7 +306,7 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
         {state === "uploading" && (
           <div className="mt-6 p-4 bg-slate-50 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-slate-900">Uploading...</p>
+              <p className="text-sm font-medium text-slate-900">Submitting for review...</p>
               <p className="text-sm text-slate-500">{progress}%</p>
             </div>
             <div className="h-2 bg-slate-200 rounded-full overflow-hidden">

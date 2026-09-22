@@ -83,7 +83,7 @@ export default function AdvisorDocuments() {
       role="ADVISOR"
       userName={user?.name || "Advisor"}
       title="Documents"
-      subtitle="Manage your compliance documents"
+      subtitle="Track your document submissions and review status"
     >
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -112,7 +112,7 @@ export default function AdvisorDocuments() {
             />
           </div>
           <Link href="/advisor/documents/upload">
-            <Button>Upload Document</Button>
+            <Button>Submit Document for Review</Button>
           </Link>
         </div>
 

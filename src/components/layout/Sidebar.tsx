@@ -30,7 +30,7 @@ export function Sidebar({ role, userName, isOpen, onClose }: SidebarProps) {
     { href: "/advisor/documents", label: "Documents", icon: FileText },
     {
       href: "/advisor/documents/upload",
-      label: "Upload",
+      label: "Submit for Review",
       icon: Upload,
     },
     { href: "/advisor/profile", label: "Profile", icon: User },
