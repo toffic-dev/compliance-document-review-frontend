@@ -6,6 +6,11 @@ import { cn } from "@/lib/utils";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { documentsApi } from "@/lib/documents";
+import { ReviewProgress } from "@/components/review/ReviewProgress";
+import {
+  REVIEW_STAGES,
+  submissionStatuses,
+} from "@/lib/reviewProgress";
 import { ApiError } from "@/lib/api";
 
 interface FileUploaderProps {
@@ -204,24 +209,35 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
 
   if (state === "success") {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-        <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="h-8 w-8 text-emerald-600" />
-        </div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">
-          Document submitted for review
-        </h3>
-        <p className="text-sm text-slate-500 mb-1">{file?.name}</p>
-        <p className="text-sm text-slate-600 font-medium">
-          Status: Pending Review
-        </p>
-        <div className="flex gap-3 justify-center mt-6">
-          <Button variant="outline" onClick={handleRemove}>
-            Submit Another Document
-          </Button>
-          <Button onClick={() => router.push("/advisor/documents")}>
-            View Documents
-          </Button>
+      <div className="space-y-6">
+        {/* Only the upload is observable from the browser; extraction, analysis
+            and the officer decision continue on the server after the response,
+            so those stages stay open rather than being ticked off. */}
+        <ReviewProgress
+          stages={REVIEW_STAGES}
+          statuses={submissionStatuses("complete")}
+          title="Submission progress"
+          message="The document is in the review queue. Extraction and AI analysis run during compliance review — track the outcome from your Documents list."
+        />
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+          <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="h-8 w-8 text-emerald-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">
+            Document submitted for review
+          </h3>
+          <p className="text-sm text-slate-500 mb-1">{file?.name}</p>
+          <p className="text-sm text-slate-600 font-medium">
+            Status: Pending Review
+          </p>
+          <div className="flex gap-3 justify-center mt-6">
+            <Button variant="outline" onClick={handleRemove}>
+              Submit Another Document
+            </Button>
+            <Button onClick={() => router.push("/advisor/documents")}>
+              View Documents
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -304,16 +320,20 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
         )}
 
         {state === "uploading" && (
-          <div className="mt-6 p-4 bg-slate-50 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-slate-900">Submitting for review...</p>
-              <p className="text-sm text-slate-500">{progress}%</p>
-            </div>
-            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-slate-900 rounded-full transition-all duration-200"
-                style={{ width: `${progress}%` }}
-              />
+          <div className="mt-6 space-y-4">
+            <ReviewProgress
+              stages={REVIEW_STAGES}
+              statuses={submissionStatuses("running")}
+              title="Submission progress"
+              message={`Sending the document for review — ${progress}% transferred.`}
+            />
+            <div className="p-4 bg-slate-50 rounded-lg">
+              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-slate-900 rounded-full transition-all duration-200"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
           </div>
         )}

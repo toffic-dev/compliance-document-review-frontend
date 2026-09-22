@@ -4,8 +4,22 @@ export function cn(...inputs: ClassValue[]) {
   return inputs.filter(Boolean).join(" ");
 }
 
-export function formatDate(dateString: string): string {
+/** Placeholder for a value the backend did not provide. */
+export const EMPTY_VALUE = "—";
+
+/**
+ * Formats an ISO timestamp for display.
+ *
+ * Returns a dash rather than the literal "Invalid Date" for missing or
+ * unparseable values (a document without an `updatedAt`, for instance), so a
+ * gap in the data never leaks a JavaScript artefact into the UI.
+ */
+export function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return EMPTY_VALUE;
+
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return EMPTY_VALUE;
+
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",

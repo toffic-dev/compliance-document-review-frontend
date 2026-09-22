@@ -4,7 +4,13 @@ import { useState } from "react";
 import { AIAnalysis } from "@/types";
 import { AlertTriangle, RefreshCw, Info, Sparkles } from "lucide-react";
 import { ComplianceFlag } from "./ComplianceFlag";
+import { ReviewProgress } from "@/components/review/ReviewProgress";
 import { Button } from "@/components/ui/Button";
+import {
+  REVIEW_STAGES,
+  analyzeStatuses,
+  type ReviewProgressState,
+} from "@/lib/reviewProgress";
 
 interface AIAnalysisPanelProps {
   analysis: AIAnalysis | undefined;
@@ -14,6 +20,12 @@ interface AIAnalysisPanelProps {
   documentId?: string;
   onAnalyze?: () => Promise<void>;
   isAnalyzing?: boolean;
+  /**
+   * How far the analysis run triggered from this screen got. Left `idle` when
+   * the analysis was loaded rather than run here, so a revisited submission
+   * never claims stages this visit did not observe.
+   */
+  progress?: ReviewProgressState;
 }
 
 export function AIAnalysisPanel({
@@ -23,6 +35,7 @@ export function AIAnalysisPanel({
   onRetry,
   onAnalyze,
   isAnalyzing = false,
+  progress = "idle",
 }: AIAnalysisPanelProps) {
   const [selectedFlagId, setSelectedFlagId] = useState<string | null>(null);
 
@@ -40,37 +53,51 @@ export function AIAnalysisPanel({
     );
   }
 
-  if (isError || !analysis) {
+  // The run started here and is still in flight: show which stage is being
+  // awaited rather than a generic spinner.
+  const isRunning = !analysis && (progress === "running" || isAnalyzing);
+
+  if (isRunning) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <div className="text-center">
-          <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="h-6 w-6 text-slate-400" />
-          </div>
-          <h3 className="text-lg font-medium text-slate-900 mb-2">
-            AI analysis unavailable
-          </h3>
-          <p className="text-sm text-slate-500 mb-4">
-            {isError
-              ? "Failed to load analysis. You can try again or run a new analysis."
-              : "No analysis available. Run AI analysis to check for compliance issues."}
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            {onAnalyze && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={onAnalyze}
-                isLoading={isAnalyzing}
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Run Analysis
-              </Button>
-            )}
+      <ReviewProgress
+        stages={REVIEW_STAGES}
+        statuses={analyzeStatuses("running")}
+        message="Working through the submission. Findings appear here as soon as the analysis returns."
+      />
+    );
+  }
+
+  if (isError) {
+    // A failed run keeps the stage it stopped on; a failed *read* of an existing
+    // analysis has no stages to show, so it stays a plain error card.
+    const failedDuringRun = progress === "failed";
+
+    return (
+      <div className="space-y-6">
+        {failedDuringRun && (
+          <ReviewProgress
+            stages={REVIEW_STAGES}
+            statuses={analyzeStatuses("failed")}
+            message="The analysis could not be completed. No stages were marked complete beyond the submission itself."
+          />
+        )}
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <div className="text-center">
+            <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-medium text-slate-900 mb-2">
+              {failedDuringRun ? "Analysis failed" : "Could not load the analysis"}
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              {failedDuringRun
+                ? "Running the analysis did not return a result. Try again, or review the document without AI findings."
+                : "The compliance analysis for this submission could not be retrieved."}
+            </p>
             {onRetry && (
-              <Button variant="outline" size="sm" onClick={onRetry}>
+              <Button variant="primary" size="sm" onClick={onRetry} isLoading={isAnalyzing}>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
+                Try again
               </Button>
             )}
           </div>
@@ -79,8 +106,50 @@ export function AIAnalysisPanel({
     );
   }
 
+  if (!analysis) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="text-center">
+          <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <Sparkles className="h-6 w-6 text-slate-400" />
+          </div>
+          <h3 className="text-lg font-medium text-slate-900 mb-2">
+            No analysis yet
+          </h3>
+          <p className="text-sm text-slate-500 mb-4">
+            Run the AI-assisted review to check this submission for compliance
+            issues before making a decision.
+          </p>
+          {onAnalyze && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onAnalyze}
+              isLoading={isAnalyzing}
+            >
+              {!isAnalyzing && <Sparkles className="h-4 w-4 mr-2" />}
+              Run AI Analysis
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* The run finished on this screen: show the whole pipeline ticked off
+          once, so "Review complete" is visible. A re-opened submission skips
+          this (progress stays `idle`) and goes straight to the findings. */}
+      {progress === "complete" && (
+        <ReviewProgress
+          stages={REVIEW_STAGES}
+          statuses={analyzeStatuses("complete")}
+          title="Review complete"
+          message="The pipeline finished and the findings below are ready to review."
+        />
+      )}
+
       {/* Summary */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <div className="flex items-center justify-between mb-3">

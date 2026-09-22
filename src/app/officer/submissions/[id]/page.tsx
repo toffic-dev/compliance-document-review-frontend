@@ -1,18 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { documentsApi, reviewsApi } from "@/lib/documents";
+import { ApiError } from "@/lib/api";
 import { StatusBadge } from "@/components/documents/StatusBadge";
 import { DocumentViewer } from "@/components/review/DocumentViewer";
 import { AIAnalysisPanel } from "@/components/ai/AIAnalysisPanel";
 import { DecisionPanel } from "@/components/review/DecisionPanel";
 import { ToastContainer } from "@/components/ui/Toast";
-import { FileText, ArrowLeft, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { FileText, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Document, Toast, AIAnalysis } from "@/types";
+import { type ReviewProgressState } from "@/lib/reviewProgress";
 import { useAuth } from "@/lib/AuthContext";
 import { normalizeRole } from "@/lib/utils";
 
@@ -27,9 +29,44 @@ export default function OfficerReview() {
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiError, setAiError] = useState(false);
+  /**
+   * How the analysis *run triggered from this screen* is going. Tracked here
+   * rather than inferred in the panel, because only the caller knows whether an
+   * analysis was just produced or merely loaded from a previous session.
+   */
+  const [analysisProgress, setAnalysisProgress] = useState<ReviewProgressState>("idle");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [currentStatus, setCurrentStatus] = useState<Document["status"]>("PENDING_REVIEW");
   const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
+
+  /**
+   * Reads the analysis a submission already has. A 404 is the expected answer for
+   * a document that has never been analyzed (the panel then offers to run one);
+   * any other failure is a real error worth surfacing, so the officer can retry
+   * the fetch instead of being left with a silently empty panel.
+   */
+  const loadAnalysis = useCallback(async (id: string) => {
+    // Reading an existing analysis is not a run: clear any stages left over from
+    // a previous analysis on this screen so nothing stale stays ticked off.
+    setAnalysisProgress("idle");
+    try {
+      const result = await documentsApi.getAnalysis(id);
+      setAnalysis(result);
+      setAiError(false);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setAnalysis(undefined);
+        setAiError(false);
+      } else {
+        setAiError(true);
+        console.error(err);
+      }
+    }
+  }, []);
+
+  const retryLoadAnalysis = () => {
+    if (document) void loadAnalysis(document.id);
+  };
 
   // Role check: wait for auth to load, then verify role
   useEffect(() => {
@@ -54,30 +91,18 @@ export default function OfficerReview() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (document) {
-      console.log('[DOCUMENT DETAIL] preview file URL:', document.fileUrl);
-    }
-  }, [document]);
-
-  useEffect(() => {
     const fetchDocument = async () => {
       try {
         setIsLoading(true);
         const doc = await documentsApi.getById(docId);
         setDocument(doc);
         setCurrentStatus(doc.status);
-        console.log('[DOCUMENT DETAIL] raw document data:', JSON.stringify(doc, null, 2));
 
-        // Fetch analysis separately since it's not included in the document response
-        try {
-          const result = await documentsApi.getAnalysis(doc.id);
-          setAnalysis(result);
-        } catch {
-          // A 404 here is expected for a document that has never been analyzed.
-          // This GET is the automatic check-on-page-load only; creating an
-          // analysis is done by the "Run Analysis" button (POST /analyze).
-          setAnalysis(undefined);
-        }
+        // The analysis is not part of the document response, so it is fetched
+        // separately. This GET only *reads* an existing analysis — running one is
+        // the explicit "Run AI Analysis" action below, so reopening a submission
+        // never triggers new work.
+        await loadAnalysis(doc.id);
       } catch (err) {
         setError("Failed to load document");
         console.error(err);
@@ -89,19 +114,24 @@ export default function OfficerReview() {
     if (docId) {
       fetchDocument();
     }
-  }, [docId]);
+  }, [docId, loadAnalysis]);
 
   const triggerAnalysis = async () => {
     if (!document) return;
     try {
       setIsAnalysisLoading(true);
       setAiError(false);
+      setAnalysisProgress("running");
       addToast("Running AI analysis...", "info");
       const result = await documentsApi.triggerAnalysis(document.id);
       setAnalysis(result);
+      // Only now, with the returned findings in hand, can the pipeline stages be
+      // reported as complete.
+      setAnalysisProgress("complete");
       addToast("Analysis complete", "success");
     } catch (err) {
       setAiError(true);
+      setAnalysisProgress("failed");
       addToast("Failed to run analysis", "error");
       console.error(err);
     } finally {
@@ -247,11 +277,11 @@ export default function OfficerReview() {
           <div>
             <AIAnalysisPanel
               analysis={analysis}
-              isLoading={isAnalysisLoading}
               isError={aiError}
-              onRetry={triggerAnalysis}
+              onRetry={retryLoadAnalysis}
               onAnalyze={triggerAnalysis}
               isAnalyzing={isAnalysisLoading}
+              progress={analysisProgress}
             />
           </div>
         </div>

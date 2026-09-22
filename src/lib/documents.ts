@@ -1,6 +1,6 @@
 import api, { API_URL, ApiError } from './api';
 import { endSession, getToken, SESSION_EXPIRED_MESSAGE } from './session';
-import { Document, ReviewDecision, AIAnalysis, ComplianceFlag } from '@/types';
+import { Document, ReviewDecision, AIAnalysis, ComplianceFlag, Revision } from '@/types';
 
 interface DocumentsResponse {
   documents: Document[];
@@ -17,37 +17,62 @@ interface DocumentFilters {
   search?: string;
 }
 
-// Backend response types (snake_case)
+// Backend response types. The API serialises the documented camelCase names
+// (`submittedDate`, `fileType`, `advisorId`, …) and also echoes a few raw
+// snake_case columns (`created_at`, `file_size`, `content_type`), so every
+// field below is optional and the mapper reads whichever one is present.
 interface BackendDocument {
   id: number;
-  file_name: string;
-  file_type: string;
-  file_size: number | null;
-  file_url: string | null;
+  // camelCase (documented response)
+  name?: string | null;
+  filename?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
+  submittedDate?: string | null;
+  updatedDate?: string | null;
+  advisorId?: number | null;
+  advisorName?: string | null;
+  revisions?: BackendRevision[] | null;
+  aiAnalysis?: BackendAnalysis | null;
+  // snake_case columns the API also sends
+  file_name?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  file_url?: string | null;
+  content_type?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   status: string;
-  advisor_id: number;
-  advisor_name: string;
-  advisorName?: string;
-  version: number;
+  version?: number | null;
   total_pages?: number;
-  created_at: string | null;
-  updated_at: string | null;
+}
+
+interface BackendRevision {
+  id: number;
+  documentId?: number;
+  version: number;
+  status: string;
+  comment?: string | null;
+  createdAt?: string | null;
 }
 
 interface BackendFlag {
-  id: string;
+  // The API does not give flags an id, so one is derived when mapping.
+  id?: string;
   severity: string;
   title: string;
   passage: string;
-  matched_rule: string;
+  matchedRule?: string | null;
+  matched_rule?: string | null;
   explanation: string;
-  page: number;
+  page?: number | null;
 }
 
 interface BackendAnalysis {
-  summary: string;
-  flags: BackendFlag[];
-  generated_at: string;
+  summary?: string;
+  flags?: BackendFlag[];
+  generatedAt?: string | null;
+  generated_at?: string | null;
 }
 
 function formatFileSize(bytes: number): string {
@@ -56,63 +81,95 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-function detectFileType(fileName: string | null | undefined, fileType: string | null | undefined): Document['fileType'] {
-  // Try to detect from file extension first
+function detectFileType(fileName: string | null | undefined, ...hints: (string | null | undefined)[]): Document['fileType'] {
+  // The extension is the most reliable signal, then the declared MIME type.
+  const combined = [fileName, ...hints].filter(Boolean).join(' ').toUpperCase();
+
+  if (combined.includes('PDF')) return 'PDF';
+  if (combined.includes('WORD') || combined.includes('DOCX') || combined.includes('DOCUMENT')) return 'DOCX';
+  if (combined.includes('SHEET') || combined.includes('XLSX') || combined.includes('EXCEL')) return 'XLSX';
+
+  // Fall back on a file extension the MIME sniffing missed.
   const ext = fileName?.split('.').pop()?.toLowerCase();
-  if (ext === 'pdf') return 'PDF';
   if (ext === 'docx') return 'DOCX';
   if (ext === 'xlsx') return 'XLSX';
-  // Fall back to parsing file_type field
-  const upper = fileType?.toUpperCase();
-  if (upper?.includes('PDF')) return 'PDF';
-  if (upper?.includes('WORD') || upper?.includes('DOCX')) return 'DOCX';
-  if (upper?.includes('SHEET') || upper?.includes('XLSX')) return 'XLSX';
-  return 'PDF'; // default fallback
+  return 'PDF';
 }
 
 function mapBackendStatus(status: string): Document['status'] {
-  const upper = status.toUpperCase().replace(/-/g, '_');
+  const upper = (status ?? '').toUpperCase().replace(/-/g, '_');
   if (upper.includes('APPROVE')) return 'APPROVED';
   if (upper.includes('REJECT')) return 'REJECTED';
   if (upper.includes('REVISION')) return 'NEEDS_REVISION';
   return 'PENDING_REVIEW'; // default fallback
 }
 
+function mapBackendRevision(revision: BackendRevision, isCurrent: boolean): Revision {
+  return {
+    id: String(revision.id),
+    version: revision.version ?? 1,
+    date: revision.createdAt ?? '',
+    status: mapBackendStatus(revision.status),
+    comment: revision.comment ?? undefined,
+    isCurrent,
+  };
+}
+
 function mapBackendDocument(doc: BackendDocument): Document {
-  // Handle potential field name variations from backend
-  const fileName = doc.file_name ?? (doc as unknown as Record<string, unknown>).filename as string ?? 'Unknown';
-  const fileType = doc.file_type ?? (doc as unknown as Record<string, unknown>).mimeType as string ?? (doc as unknown as Record<string, unknown>).content_type as string ?? '';
+  // The API sends `name` (display name) and `filename` (stored file); older
+  // payloads only had `file_name`, so accept all three.
+  const fileName = doc.name ?? doc.filename ?? doc.file_name ?? 'Unknown';
+  const declaredType = doc.fileType ?? doc.file_type ?? doc.content_type ?? '';
+
+  const revisions = (doc.revisions ?? [])
+    .map((revision) => revision)
+    .filter((revision): revision is BackendRevision => revision != null);
+  // The API does not flag which revision is current: the highest version is.
+  const currentVersion = revisions.reduce(
+    (highest, revision) => Math.max(highest, revision.version ?? 0),
+    0
+  );
 
   return {
     id: String(doc.id),
     name: fileName,
-    fileType: detectFileType(fileName, fileType),
-    fileSize: doc.file_size != null ? formatFileSize(doc.file_size) : 'Unknown',
+    fileType: detectFileType(fileName, declaredType),
+    fileSize:
+      doc.fileSize != null
+        ? formatFileSize(doc.fileSize)
+        : doc.file_size != null
+          ? formatFileSize(doc.file_size)
+          : 'Unknown',
     version: doc.version ?? 1,
-    submittedDate: doc.created_at || '',
-    updatedDate: doc.updated_at || '',
+    submittedDate: doc.submittedDate ?? doc.created_at ?? '',
+    updatedDate: doc.updatedDate ?? doc.updated_at ?? '',
     status: mapBackendStatus(doc.status),
-    advisorId: String(doc.advisor_id),
-    advisorName: doc.advisorName ?? doc.advisor_name ?? 'Unknown',
+    advisorId: doc.advisorId != null ? String(doc.advisorId) : '',
+    advisorName: doc.advisorName ?? (doc as BackendDocument & { advisor_name?: string }).advisor_name ?? 'Unknown',
     fileUrl: doc.file_url || undefined,
     totalPages: doc.total_pages ?? 1,
-    revisions: [],
-    aiAnalysis: undefined,
+    revisions: revisions.map((revision) =>
+      mapBackendRevision(revision, (revision.version ?? 0) === currentVersion)
+    ),
+    aiAnalysis: doc.aiAnalysis ? mapBackendAnalysis(doc.aiAnalysis) : undefined,
   };
 }
 
 function mapBackendAnalysis(analysis: BackendAnalysis): AIAnalysis {
   return {
-    summary: analysis.summary,
-    generatedAt: analysis.generated_at,
-    flags: analysis.flags.map((flag): ComplianceFlag => ({
-      id: flag.id,
-      severity: flag.severity.toUpperCase() as ComplianceFlag['severity'],
-      title: flag.title,
-      passage: flag.passage,
-      matchedRule: flag.matched_rule,
-      explanation: flag.explanation,
-      page: flag.page,
+    summary: analysis.summary ?? '',
+    generatedAt: analysis.generatedAt ?? analysis.generated_at ?? '',
+    // Flags carry no id of their own; a stable one per position keeps React keys
+    // and the per-flag selection working (otherwise every flag shares `undefined`
+    // and selecting one would select them all).
+    flags: (analysis.flags ?? []).map((flag, index): ComplianceFlag => ({
+      id: flag.id ?? `flag-${index}`,
+      severity: (flag.severity ?? 'LOW').toUpperCase() as ComplianceFlag['severity'],
+      title: flag.title ?? 'Untitled finding',
+      passage: flag.passage ?? '',
+      matchedRule: flag.matchedRule ?? flag.matched_rule ?? 'Not specified',
+      explanation: flag.explanation ?? '',
+      page: flag.page ?? 0,
     })),
   };
 }
@@ -205,8 +262,11 @@ export const documentsApi = {
   upload: async (file: File, advisorId: string, signal?: AbortSignal): Promise<Document> => {
     const formData = new FormData();
     formData.append('file', file);
+    // The advisor is taken from the bearer token; the field is kept because the
+    // documented multipart body lists only `file` and older builds expected it.
     formData.append('advisorId', advisorId);
-    return api.upload<Document>('/documents', formData, signal);
+    const created = await api.upload<BackendDocument>('/documents', formData, signal);
+    return mapBackendDocument(created);
   },
 
   getAnalysis: async (id: string): Promise<AIAnalysis> => {
@@ -314,7 +374,11 @@ export const documentsApi = {
 
 export const reviewsApi = {
   submit: async (data: Omit<ReviewDecision, 'timestamp'>): Promise<{ success: boolean; document: Document }> => {
-    return api.post('/reviews', data);
+    // The API documents `documentId` as an integer while the UI carries ids as
+    // strings, so coerce it (leaving non-numeric ids untouched).
+    const documentId = Number(data.documentId);
+    const payload = Number.isFinite(documentId) ? { ...data, documentId } : data;
+    return api.post('/reviews', payload);
   },
 
   getHistory: async (documentId: string): Promise<ReviewDecision[]> => {

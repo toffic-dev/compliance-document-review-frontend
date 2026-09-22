@@ -175,11 +175,14 @@ export default function DocumentDetails() {
               </div>
             )}
 
-            {/* Revision History */}
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-sm font-semibold text-slate-900 mb-4">Revision History</h3>
-              <RevisionHistory revisions={document.revisions} />
-            </div>
+            {/* Revision History — only once there is something to show, rather than an
+              empty card on every first submission. */}
+            {document.revisions.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 p-6">
+                <h3 className="text-sm font-semibold text-slate-900 mb-4">Revision History</h3>
+                <RevisionHistory revisions={document.revisions} />
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">
