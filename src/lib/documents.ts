@@ -1,4 +1,5 @@
 import api, { API_URL, ApiError } from './api';
+import { endSession, getToken, SESSION_EXPIRED_MESSAGE } from './session';
 import { Document, ReviewDecision, AIAnalysis, ComplianceFlag } from '@/types';
 
 interface DocumentsResponse {
@@ -219,7 +220,7 @@ export const documentsApi = {
   },
 
   download: async (id: string): Promise<Blob> => {
-    const token = localStorage.getItem('token');
+    const token = getToken();
     // Use the user-facing download endpoint (HTTPBearer = the logged-in user's
     // JWT). The `/documents/{id}/file` route is the *internal* endpoint used by
     // the AI service: it requires an internal service token and always responds
@@ -241,6 +242,15 @@ export const documentsApi = {
       } catch {
         // Response body was not JSON; fall back to the raw text
       }
+
+      // This request bypasses the shared client (it reads a file body, not
+      // JSON), so it repeats the client's 401 handling: an expired or revoked
+      // token ends the session everywhere rather than surfacing a download error.
+      if (response.status === 401) {
+        endSession();
+        throw new ApiError(401, SESSION_EXPIRED_MESSAGE, rawText);
+      }
+
       const detailText = typeof detail === 'string' ? detail : JSON.stringify(detail);
       const message = `Download failed (HTTP ${response.status})${detailText ? `: ${detailText}` : ''}`;
       console.error('[documentsApi.download]', message, {

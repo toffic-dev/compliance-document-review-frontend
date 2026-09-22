@@ -1,7 +1,24 @@
+import {
+  endSession,
+  getToken,
+  SESSION_EXPIRED_MESSAGE,
+} from './session';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://compliance-document-review-app-production.up.railway.app';
 const API_VERSION = '/api/v1';
 
 export { API_URL, API_VERSION };
+
+/**
+ * Endpoints where a 401 means "those credentials are wrong", not "your session
+ * expired" — signing in with a bad password must not trigger the session-expiry
+ * redirect or wipe the form.
+ */
+const CREDENTIAL_ENDPOINTS = ['/auth/login', '/auth/signup'];
+
+function isCredentialEndpoint(endpoint: string): boolean {
+  return CREDENTIAL_ENDPOINTS.includes(endpoint);
+}
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public rawResponse?: string) {
@@ -24,7 +41,7 @@ async function apiFetch<T>(endpoint: string, config: RequestConfig = {}): Promis
     url += `?${searchParams.toString()}`;
   }
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const token = getToken();
 
   const headers: HeadersInit = {
     ...(token && { Authorization: `Bearer ${token}` }),
@@ -54,6 +71,16 @@ async function apiFetch<T>(endpoint: string, config: RequestConfig = {}): Promis
         // Response was not JSON
       }
       const errorMessage = errorData?.message || errorData?.error || errorData?.detail || rawText || `Request failed with status ${response.status}`;
+
+      // An authenticated request rejected with 401 means the token is expired,
+      // revoked or otherwise no longer accepted. Handle it once, here, for every
+      // caller: end the session globally and throw copy that explains the
+      // redirect instead of the raw backend detail.
+      if (response.status === 401 && !isCredentialEndpoint(endpoint)) {
+        endSession();
+        throw new ApiError(401, SESSION_EXPIRED_MESSAGE, rawText);
+      }
+
       throw new ApiError(response.status, errorMessage, rawText);
     }
 

@@ -12,8 +12,9 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UserRole } from "@/types";
+import { useAuth } from "@/lib/AuthContext";
 
 interface SidebarProps {
   role: UserRole;
@@ -24,6 +25,16 @@ interface SidebarProps {
 
 export function Sidebar({ role, userName, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
+
+  // Signing out has to clear the stored session, not just navigate away: leaving
+  // the token in storage would sign the visitor straight back in on the next load.
+  const handleSignOut = () => {
+    logout();
+    onClose();
+    router.push("/login");
+  };
 
   const advisorLinks = [
     { href: "/advisor", label: "Dashboard", icon: LayoutDashboard },
@@ -123,13 +134,14 @@ export function Sidebar({ role, userName, isOpen, onClose }: SidebarProps) {
               </p>
             </div>
           </div>
-          <Link
-            href="/login"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
           >
             <LogOut className="h-5 w-5" />
             Sign Out
-          </Link>
+          </button>
         </div>
       </aside>
     </>

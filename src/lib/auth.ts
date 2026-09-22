@@ -1,6 +1,13 @@
 import api, { ApiError } from './api';
 import { User, UserRole } from '@/types';
 import { normalizeRole } from './utils';
+import {
+  clearSession,
+  getStoredUser,
+  getToken as readToken,
+  hasValidSession,
+  saveSession,
+} from './session';
 
 interface LoginRequest {
   email: string;
@@ -35,8 +42,7 @@ export const authApi = {
     const response = await api.post<{ user: { id: string; full_name: string; email: string; role: string; avatar?: string }; token: string }>('/auth/login', data);
     const user = mapBackendUser(response.user);
     if (response.token) {
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(user));
+      saveSession(response.token, user);
     }
     return { user, token: response.token };
   },
@@ -45,30 +51,30 @@ export const authApi = {
     const response = await api.post<{ user: { id: string; full_name: string; email: string; role: string; avatar?: string }; token: string }>('/auth/signup', data);
     const user = mapBackendUser(response.user);
     if (response.token) {
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(user));
+      saveSession(response.token, user);
     }
     return { user, token: response.token };
   },
 
   logout: (): void => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearSession();
   },
 
   getCurrentUser: (): User | null => {
-    if (typeof window === 'undefined') return null;
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    return getStoredUser();
   },
 
   getToken: (): string | null => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('token');
+    return readToken();
   },
 
+  /**
+   * True only while the stored token is present and not past its `exp`. A token
+   * that has expired counts as signed out, which is what lets the app leave a
+   * protected page instead of rendering it half-alive.
+   */
   isAuthenticated: (): boolean => {
-    return !!authApi.getToken();
+    return hasValidSession();
   },
 };
 

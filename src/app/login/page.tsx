@@ -3,10 +3,14 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Shield, Mail, Lock } from "lucide-react";
+import { Shield, Mail, Lock, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/lib/AuthContext";
+import {
+  SESSION_EXPIRED_MESSAGE,
+  SESSION_EXPIRED_REASON,
+} from "@/lib/session";
 import { validateEmail, validateRequired, type FieldErrors } from "@/lib/validation";
 
 type LoginField = "email" | "password";
@@ -22,6 +26,9 @@ interface LoginValues {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // The session handler sends visitors here with `?reason=session-expired` when
+  // a token expired or was rejected, so the redirect is never silent.
+  const sessionExpired = searchParams.get("reason") === SESSION_EXPIRED_REASON;
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -101,6 +108,15 @@ function LoginForm() {
 
   return (
     <>
+      {sessionExpired && !error && (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{SESSION_EXPIRED_MESSAGE}</span>
+        </div>
+      )}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
           {error}
