@@ -210,14 +210,14 @@ export function FileUploader({ advisorId }: FileUploaderProps) {
   if (state === "success") {
     return (
       <div className="space-y-6">
-        {/* Only the upload is observable from the browser; extraction, analysis
-            and the officer decision continue on the server after the response,
-            so those stages stay open rather than being ticked off. */}
+        {/* Only the upload is observable from the browser; analysis and the officer
+            decision continue on the server after the response, so those stages
+            stay open rather than being ticked off. */}
         <ReviewProgress
           stages={REVIEW_STAGES}
           statuses={submissionStatuses("complete")}
           title="Submission progress"
-          message="The document is in the review queue. Extraction and AI analysis run during compliance review — track the outcome from your Documents list."
+          message="The document is in the review queue. AI analysis runs during compliance review — track the outcome from your Documents list."
         />
         <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
           <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
