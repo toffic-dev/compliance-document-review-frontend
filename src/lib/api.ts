@@ -84,7 +84,15 @@ async function apiFetch<T>(endpoint: string, config: RequestConfig = {}): Promis
       throw new ApiError(response.status, errorMessage, rawText);
     }
 
-    return response.json();
+    // Some endpoints answer 200 with no body at all — an empty review history,
+    // for instance. Treat that as "nothing to return" instead of trying to parse
+    // JSON that is not there.
+    if (response.status === 204) return undefined as T;
+
+    const rawBody = await response.text();
+    if (!rawBody.trim()) return undefined as T;
+
+    return JSON.parse(rawBody) as T;
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;

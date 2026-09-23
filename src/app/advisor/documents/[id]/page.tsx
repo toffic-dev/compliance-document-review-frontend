@@ -3,9 +3,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { documentsApi } from "@/lib/documents";
+import { documentsApi, reviewsApi } from "@/lib/documents";
+import { ApiError } from "@/lib/api";
 import { StatusBadge } from "@/components/documents/StatusBadge";
-import { StatusTimeline } from "@/components/documents/StatusTimeline";
+import {
+  StatusTimeline,
+  type ReviewOutcome,
+} from "@/components/documents/StatusTimeline";
 import { RevisionHistory } from "@/components/documents/RevisionHistory";
 import { formatDate, normalizeRole } from "@/lib/utils";
 import { FileText, ArrowLeft, RefreshCw } from "lucide-react";
@@ -23,6 +27,14 @@ export default function DocumentDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [roleMismatchMessage, setRoleMismatchMessage] = useState<string | null>(null);
+  /**
+   * Facts the status timeline reports, read from the backend rather than assumed:
+   * whether an AI analysis exists at all (`undefined` = not checked), and the
+   * officer's recorded decision.
+   */
+  const [hasAnalysis, setHasAnalysis] = useState<boolean | undefined>(undefined);
+  const [analysisDate, setAnalysisDate] = useState<string | undefined>(undefined);
+  const [outcome, setOutcome] = useState<ReviewOutcome | undefined>(undefined);
 
   // Role check: wait for auth to load, then verify role
   useEffect(() => {
@@ -52,6 +64,38 @@ export default function DocumentDetails() {
         setIsLoading(true);
         const doc = await documentsApi.getById(docId);
         setDocument(doc);
+
+        // Whether an analysis exists is a separate fact from the document: the
+        // reviewer runs it on demand, so a document in the queue has none. A 404
+        // means "never analysed"; any other failure leaves it unknown rather
+        // than reporting a false negative.
+        try {
+          const analysis = await documentsApi.getAnalysis(doc.id);
+          setHasAnalysis(true);
+          setAnalysisDate(analysis.generatedAt || undefined);
+        } catch (analysisErr) {
+          if (analysisErr instanceof ApiError && analysisErr.status === 404) {
+            setHasAnalysis(false);
+            setAnalysisDate(undefined);
+          }
+        }
+
+        // The officer's decision, as recorded by the backend.
+        try {
+          const history = await reviewsApi.getHistory(doc.id);
+          const latest = history[history.length - 1];
+          if (latest) {
+            setOutcome({
+              decision: latest.decision,
+              timestamp: latest.timestamp || undefined,
+              officerName: latest.officerName,
+              comment: latest.comment || undefined,
+            });
+          }
+        } catch (historyErr) {
+          // The timeline falls back to the document's own status.
+          console.error(historyErr);
+        }
       } catch (err) {
         setError("Failed to load document");
         console.error(err);
@@ -188,7 +232,13 @@ export default function DocumentDetails() {
           <div className="space-y-6">
             <div className="bg-white rounded-xl border border-slate-200 p-6">
               <h3 className="text-sm font-semibold text-slate-900 mb-4">Status Timeline</h3>
-              <StatusTimeline status={document.status} />
+              <StatusTimeline
+                status={document.status}
+                hasAnalysis={hasAnalysis}
+                outcome={outcome}
+                submittedDate={document.submittedDate}
+                analysisDate={analysisDate}
+              />
             </div>
           </div>
         </div>

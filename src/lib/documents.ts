@@ -75,6 +75,28 @@ interface BackendAnalysis {
   generated_at?: string | null;
 }
 
+/** A decision as recorded by `POST /reviews`. */
+interface BackendReview {
+  id: number;
+  documentId: number;
+  officerId: number;
+  officer?: { id: number; full_name: string; email: string; role: string } | null;
+  decision: string;
+  comment: string;
+  timestamp?: string | null;
+}
+
+function mapBackendReview(review: BackendReview): ReviewDecision {
+  return {
+    documentId: String(review.documentId),
+    decision: (review.decision ?? '').toUpperCase() as ReviewDecision['decision'],
+    comment: review.comment ?? '',
+    officerId: String(review.officerId),
+    officerName: review.officer?.full_name,
+    timestamp: review.timestamp ?? '',
+  };
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -129,6 +151,9 @@ function mapBackendDocument(doc: BackendDocument): Document {
     (highest, revision) => Math.max(highest, revision.version ?? 0),
     0
   );
+  const latestRevision = revisions.find(
+    (revision) => (revision.version ?? 0) === currentVersion
+  );
 
   return {
     id: String(doc.id),
@@ -152,6 +177,9 @@ function mapBackendDocument(doc: BackendDocument): Document {
       mapBackendRevision(revision, (revision.version ?? 0) === currentVersion)
     ),
     aiAnalysis: doc.aiAnalysis ? mapBackendAnalysis(doc.aiAnalysis) : undefined,
+    // The officer's reply lives on the revision record — it is the comment they
+    // attached when asking for a revision — so surface the newest one.
+    revisionComment: latestRevision?.comment ?? undefined,
   };
 }
 
@@ -382,6 +410,8 @@ export const reviewsApi = {
   },
 
   getHistory: async (documentId: string): Promise<ReviewDecision[]> => {
-    return api.get<ReviewDecision[]>(`/reviews/${documentId}`);
+    const history = await api.get<BackendReview[] | undefined>(`/reviews/${documentId}`);
+    // A submission with no decision yet answers 200 with an empty body.
+    return Array.isArray(history) ? history.map(mapBackendReview) : [];
   },
 };

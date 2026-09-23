@@ -67,6 +67,8 @@ export interface ReviewDecision {
   decision: "APPROVE" | "REJECT" | "REQUEST_REVISION";
   comment: string;
   officerId: string;
+  /** Name of the officer who recorded the decision, when the API provides it. */
+  officerName?: string;
   timestamp: string;
 }
 
