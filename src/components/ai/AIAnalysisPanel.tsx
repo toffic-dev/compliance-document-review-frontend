@@ -67,7 +67,9 @@ export function AIAnalysisPanel({
     );
   }
 
-  if (isError) {
+  // A successfully returned analysis is authoritative. A stale error state
+  // must never hide findings that were actually received from the backend.
+  if (isError && !analysis) {
     // A failed run keeps the stage it stopped on; a failed *read* of an existing
     // analysis has no stages to show, so it stays a plain error card.
     const failedDuringRun = progress === "failed";
@@ -167,9 +169,19 @@ export function AIAnalysisPanel({
             </Button>
           )}
         </div>
-        <p className="text-sm text-slate-600 leading-relaxed">
-          {analysis.summary}
-        </p>
+        {analysis.summary && analysis.summary !== "AI summary unavailable." ? (
+          <p className="text-sm text-slate-600 leading-relaxed">
+            {analysis.summary}
+          </p>
+        ) : (
+          <div className="flex items-start gap-2 text-sm text-slate-500">
+            <Info className="h-4 w-4 mt-0.5 shrink-0" />
+            <p>
+              No AI-generated summary was returned for this analysis.
+              The compliance findings are still available below.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Compliance Flags */}

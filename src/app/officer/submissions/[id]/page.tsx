@@ -125,6 +125,7 @@ export default function OfficerReview() {
       addToast("Running AI analysis...", "info");
       const result = await documentsApi.triggerAnalysis(document.id);
       setAnalysis(result);
+      setAiError(false);
       // Only now, with the returned findings in hand, can the pipeline stages be
       // reported as complete.
       setAnalysisProgress("complete");
