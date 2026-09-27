@@ -29,6 +29,7 @@ export default function OfficerReview() {
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiError, setAiError] = useState(false);
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
   /**
    * How the analysis *run triggered from this screen* is going. Tracked here
    * rather than inferred in the panel, because only the caller knows whether an
@@ -53,12 +54,19 @@ export default function OfficerReview() {
       const result = await documentsApi.getAnalysis(id);
       setAnalysis(result);
       setAiError(false);
+      setAiErrorMessage(null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
         setAnalysis(undefined);
         setAiError(false);
+        setAiErrorMessage(null);
       } else {
         setAiError(true);
+        setAiErrorMessage(
+          err instanceof ApiError
+            ? err.message
+            : "The compliance analysis could not be retrieved."
+        );
         console.error(err);
       }
     }
@@ -121,17 +129,24 @@ export default function OfficerReview() {
     try {
       setIsAnalysisLoading(true);
       setAiError(false);
+      setAiErrorMessage(null);
       setAnalysisProgress("running");
       addToast("Running AI analysis...", "info");
       const result = await documentsApi.triggerAnalysis(document.id);
       setAnalysis(result);
       setAiError(false);
+      setAiErrorMessage(null);
       // Only now, with the returned findings in hand, can the pipeline stages be
       // reported as complete.
       setAnalysisProgress("complete");
       addToast("Analysis complete", "success");
     } catch (err) {
       setAiError(true);
+      setAiErrorMessage(
+        err instanceof ApiError
+          ? err.message
+          : "The AI analysis could not be completed."
+      );
       setAnalysisProgress("failed");
       addToast("Failed to run analysis", "error");
       console.error(err);
@@ -279,6 +294,7 @@ export default function OfficerReview() {
             <AIAnalysisPanel
               analysis={analysis}
               isError={aiError}
+              errorMessage={aiErrorMessage}
               onRetry={retryLoadAnalysis}
               onAnalyze={triggerAnalysis}
               isAnalyzing={isAnalysisLoading}

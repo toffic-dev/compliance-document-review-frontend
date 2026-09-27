@@ -16,6 +16,7 @@ interface AIAnalysisPanelProps {
   analysis: AIAnalysis | undefined;
   isLoading?: boolean;
   isError?: boolean;
+  errorMessage?: string | null;
   onRetry?: () => void;
   documentId?: string;
   onAnalyze?: () => Promise<void>;
@@ -32,6 +33,7 @@ export function AIAnalysisPanel({
   analysis,
   isLoading = false,
   isError = false,
+  errorMessage = null,
   onRetry,
   onAnalyze,
   isAnalyzing = false,
@@ -73,10 +75,12 @@ export function AIAnalysisPanel({
     // A failed run keeps the stage it stopped on; a failed *read* of an existing
     // analysis has no stages to show, so it stays a plain error card.
     const failedDuringRun = progress === "failed";
+    const aiServiceNotConfigured =
+      errorMessage === "AI service URL is not configured";
 
     return (
       <div className="space-y-6">
-        {failedDuringRun && (
+        {failedDuringRun && !aiServiceNotConfigured && (
           <ReviewProgress
             stages={REVIEW_STAGES}
             statuses={analyzeStatuses("failed")}
@@ -89,12 +93,19 @@ export function AIAnalysisPanel({
               <AlertTriangle className="h-6 w-6 text-red-500" />
             </div>
             <h3 className="text-lg font-medium text-slate-900 mb-2">
-              {failedDuringRun ? "Analysis failed" : "Could not load the analysis"}
+              {aiServiceNotConfigured
+                ? "AI analysis isn't enabled in this deployment"
+                : failedDuringRun
+                  ? "Analysis failed"
+                  : "Could not load the analysis"}
             </h3>
             <p className="text-sm text-slate-500 mb-4">
-              {failedDuringRun
-                ? "Running the analysis did not return a result. Try again, or review the document without AI findings."
-                : "The compliance analysis for this submission could not be retrieved."}
+              {aiServiceNotConfigured
+                ? "The document is available for manual review. AI-assisted analysis can be run in the local Docker environment."
+                : errorMessage ||
+                  (failedDuringRun
+                    ? "Running the analysis did not return a result. Try again, or review the document without AI findings."
+                    : "The compliance analysis for this submission could not be retrieved.")}
             </p>
             {onRetry && (
               <Button variant="primary" size="sm" onClick={onRetry} isLoading={isAnalyzing}>
